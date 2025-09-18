@@ -49,6 +49,49 @@
 - Use of `secrets` & `cryptographic` randomness
   - High entropy randomness for `state`, `code_verifier`, `tokens`.
 
+## Deep dive
+
+#### StateStore 
+`StateStore` class is a **thread-safe**, **temporary in-memory storage** for "states" with associated metadata (a code verifier + timestamp)
+
+Race condition occurs when multiple threads or processes read and write the same variable i.e. they have access to some shared data and they try to change it at the same time. In such a scenario threads are “racing” each other to access/change the data.
+
+```python
+class StateStore:
+    def __init__(self):
+        self._store = {}
+        self._lock = threading.Lock()
+        
+    def set_state(self, state: str, code_verifier: str):
+        with self._lock:
+            self._store[state] = {
+                'code_verifier': code_verifier,
+                'timestamp': datetime.utcnow()
+            }
+            # Clean up old entries (older than 10 minutes)
+            cutoff = datetime.utcnow() - timedelta(minutes=10)
+            self._store = {k: v for k, v in self._store.items() 
+                          if v['timestamp'] > cutoff}
+            logger.debug(f"State store now has {len(self._store)} entries")
+    
+    def get_and_remove_state(self, state: str) -> str:
+        with self._lock:
+            data = self._store.pop(state, None)
+            if data:
+                logger.debug(f"Retrieved state from backup store")
+                return data['code_verifier']
+            logger.debug(f"State not found in backup store")
+            return None
+```
+
+- `self._store`: A dictionary that holds state entries.
+
+
+- Race Condition, Deadlock and Threat Block
+
+
+
+
 ## The flow
 
 ```mermaid
