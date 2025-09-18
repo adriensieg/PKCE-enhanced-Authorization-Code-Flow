@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Secure OAuth App{% endblock %}
+
+{% block extra_head %}
+<style>
+    .login-container {
+        max-width: 500px;
+        margin: 0 auto;
+    }
+    .oauth-btn {
+        transition: all 0.3s ease;
+        border: none;
+        padding: 15px 30px;
+        font-size: 1.1em;
+        font-weight: 500;
+    }
+    .oauth-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .security-info {
+        background: linear-gradient(135deg, #e3f2fd, #f3e5f5);
+        border-radius: 10px;
+        padding: 20px;
+    }
+    .loading-spinner {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <!-- Header -->
+    <div class="text-center mb-5">
+        <div class="mb-4">
+            <i class="bi bi-shield-lock" style="font-size: 4rem; color: #0d6efd;"></i>
+        </div>
+        <h2 class="text-primary mb-3">Secure Login</h2>
+        <p class="text-muted">
+            Sign in with your Microsoft account to access the application
+        </p>
+    </div>
+
+    <!-- Login Form -->
+    <div class="card shadow">
+        <div class="card-body p-4">
+            <div class="text-center mb-4">
+                <h5 class="card-title">
+                    <i class="bi bi-microsoft me-2"></i>
+                    Microsoft Authentication
+                </h5>
+                <p class="text-muted mb-0">
+                    <small>Powered by Microsoft Entra ID</small>
+                </p>
+            </div>
+
+            <div class="d-grid mb-3">
+                <button onclick="initiateLogin()" class="btn btn-primary oauth-btn" id="loginBtn">
+                    <i class="bi bi-microsoft me-2"></i>
+                    Sign in with Microsoft
+                </button>
+            </div>
+
+            <div class="loading-spinner text-center" id="loadingSpinner">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2 text-muted">Redirecting to Microsoft...</p>
+            </div>
+
+            <hr>
+        </div>
+    </div>
+
+    <!-- Return Home -->
+    <div class="text-center mt-4">
+        <a href="/" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i>
+            Back to Home
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function initiateLogin() {
+    const loginBtn = document.getElementById('loginBtn');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    
+    // Show loading state
+    loginBtn.style.display = 'none';
+    loadingSpinner.style.display = 'block';
+    
+    // Redirect to the OAuth authorization endpoint
+    window.location.href = '/auth/microsoft';
+}
+
+// Handle any error messages from URL parameters
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const error = urlParams.get('error');
+    const errorDescription = urlParams.get('error_description');
+    
+    if (error) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+        alertDiv.innerHTML = `
+            <strong>Authentication Error:</strong> ${errorDescription || error}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        const container = document.querySelector('.login-container');
+        container.insertBefore(alertDiv, container.firstChild);
+    }
+});
+</script>
+{% endblock %}
