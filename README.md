@@ -26,6 +26,7 @@
 
 ### Rate Limiting & DoS Protection:
 - 200 requests/day, 50 requests/hour per IP
+  - - Use of `get_remote_address` for IP-related checks
 - Special limits for authentication endpoints
 - SlowAPI integration with FastAPI
 
@@ -39,6 +40,5 @@
 - Error handlers and exception handling (custom 404/500 pages)
 - Use of `secrets` & `cryptographic` randomness
   - High entropy randomness for `state`, `code_verifier`, `tokens`.
-
 
 
