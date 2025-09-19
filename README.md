@@ -106,7 +106,7 @@ When we need protected resources, use the `access_token` in `Authorization heade
 sequenceDiagram
     autonumber
     participant Browser as End-user (Browser)
-    participant App as Your FastAPI App (Server)
+    participant App as FastAPI App (Server)
     participant Session as Session Cookie (Client-side)
     participant Backup as StateStore (Server-side)
     participant Authz as Authorization Server (Microsoft)
@@ -115,27 +115,27 @@ sequenceDiagram
 
     Browser->>App: GET /auth/microsoft (user clicks "Login")
     App->>App: generate code_verifier, code_challenge = S256(code_verifier), state, nonce
-    App->>Session: set session['code_verifier'], session['oauth_state'], session['oidc_nonce']  (stored into cookie)
-    App->>Backup: set_state(state, code_verifier)  // server-side backup store
-    App-->>Browser: 302 Redirect to Authz?client_id=...&response_type=code&redirect_uri=...&scope=...&state=...&code_challenge=...&code_challenge_method=S256&nonce=...
-    Browser->>Authz: Authorization Request (user authenticates & consents at Microsoft)
+    App->>Session: store code_verifier, oauth_state, nonce
+    App->>Backup: set_state(state, code_verifier)  # backup store
+    App-->>Browser: 302 Redirect to Authz with client_id, redirect_uri, scope, state, code_challenge, code_challenge_method=S256, nonce
+    Browser->>Authz: Authorization Request (user authenticates & consents)
     Authz-->>Browser: 302 Redirect to REDIRECT_URI?code=AUTH_CODE&state=STATE
     Browser->>App: GET /auth/callback?code=AUTH_CODE&state=STATE
-    App->>Session: read session['oauth_state'] and session['code_verifier']
+    App->>Session: read oauth_state and code_verifier
     alt session has code_verifier
         App->>Token: POST /token {client_id, client_secret, grant_type=authorization_code, code=AUTH_CODE, redirect_uri, code_verifier}
-    else session is lost / cookie cleared
+    else session lost
         App->>Backup: get_and_remove_state(state) -> code_verifier
         App->>Token: POST /token {client_id, client_secret, grant_type=authorization_code, code=AUTH_CODE, redirect_uri, code_verifier}
     end
     Token-->>App: 200 OK {access_token, refresh_token, id_token, expires_in, scope, token_type}
-    App->>App: validate id_token (fetch JWKS, verify signature, validate iss/aud/exp/nonce)
+    App->>App: validate id_token (check signature, iss, aud, exp, nonce)
     App->>Session: store user info + tokens; remove PKCE/session oauth_state
-    App-->>Browser: 302 Redirect to / (user is now authenticated)
-    Note over App,Resource: Later: App calls Resource with Authorization: Bearer <access_token>
+    App-->>Browser: 302 Redirect to / (user is authenticated)
+    Note over App,Resource: App uses access_token to call Resource API (Authorization: Bearer <access_token>)
     Resource-->>App: 200 OK (protected resource)
     alt access_token expired
-        App->>Token: POST /token {grant_type=refresh_token, refresh_token=...} -> new access_token
+        App->>Token: POST /token {grant_type=refresh_token, refresh_token} -> new access_token
     end
 ```
 
