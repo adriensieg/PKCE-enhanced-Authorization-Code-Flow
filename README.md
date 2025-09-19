@@ -141,18 +141,18 @@ sequenceDiagram
 
 ## Code / tokens
 
-| Token/Code                    | Purpose                 | Real-life Value               | Consequence if Missing           |
-| ----------------------------- | ----------------------- | ----------------------------- | -------------------------------- |
-| `code_verifier`               | PKCE secret             | Prevent code theft            | Token request fails, PKCE broken |
-| `code_challenge`              | PKCE hash               | Links request to verifier     | Auth server may reject code      |
-| `state`                       | CSRF protection         | Prevents CSRF attacks         | Flow hijack possible             |
-| `nonce`                       | OIDC replay protection  | ID token bound to request     | ID token could be reused         |
-| `authorization code` (`code`) | Temporary grant         | Exchange for tokens           | Cannot get access or ID token    |
-| `access_token`                | API authorization       | Call protected resources      | Cannot access APIs               |
-| `refresh_token`               | Refresh access token    | Keep user logged in           | User must re-login on expiry     |
-| `id_token`                    | User identity           | Know user info                | Cannot identify user             |
-| `session cookie`              | Store user/session data | Maintain login state          | User logged out every request    |
-| JWKS                          | Token verification      | Ensure ID token is legitimate | Cannot trust user identity       |
+| Token/Code                    | Purpose                 | Real-life Value               | 
+| ----------------------------- | ----------------------- | ----------------------------- |
+| `code_verifier`               | PKCE secret             | Prevent code theft            |
+| `code_challenge`              | PKCE hash               | Links request to verifier     |
+| `state`                       | CSRF protection         | Prevents CSRF attacks         |
+| `nonce`                       | OIDC replay protection  | ID token bound to request     |
+| `authorization code` (`code`) | Temporary grant         | Exchange for tokens           |
+| `access_token`                | API authorization       | Call protected resources      |
+| `refresh_token`               | Refresh access token    | Keep user logged in           |
+| `id_token`                    | User identity           | Know user info                |
+| `session cookie`              | Store user/session data | Maintain login state          | 
+| JWKS                          | Token verification      | Ensure ID token is legitimate |
 
 ### 1. `code_verifier`
 
@@ -161,43 +161,33 @@ sequenceDiagram
 - **How produced (in our code)**: `base64.urlsafe_b64encode(secrets.token_bytes(32)).decode().rstrip('=')`
 - **Allowed chars (RFC 7636)**: letters, digits and - . _ ~ (but base64url typically yields A-Za-z0-9-_)
 - **Length (RFC)**: between 43 and 128 characters.
-
 ```
 code_verifier = "qH1a8fGkL3v9Y2Q0bTf7PzUoWc4mR5xA6n_0XyZq-1"
 ```
 
-
 ### 2. code_challenge (S256)
 
-What: The SHA-256 digest of code_verifier, base64url-encoded (no = padding).
-
-How: code_challenge = base64url_encode( SHA256(code_verifier) ).rstrip('=')
-
-Length: SHA-256 digest is 32 bytes → base64url length 44 with padding → after removing padding 43 characters.
-
-Example derivation (pseudocode):
-
+- **What**: Derived from code_verifier (SHA256 + base64url). Sent to the authorization server in the initial request.
+- **Purpose**: Tells the authorization server how to check the `code_verifier` later. Only the holder of `code_verifier` can correctly respond. Links the initial authorization request with the token request securely.
+- **How**: `code_challenge = base64url_encode( SHA256(code_verifier) ).rstrip('=')`
+- **Example derivation (pseudocode)**:
+```
 digest = SHA256("qH1a8fGkL3v9Y2Q0...")
 code_challenge = base64url(digest).rstrip("=")
-
-
-Example:
-
 code_challenge = "X8h6s9V6y2tQW3xLaFzPq7eU-3jBv1yY9Rkz4dQwHqM"
+```
 
-3) state
+### 3. state
 
-What: CSRF protection token — random value tied to the auth request.
-
-How produced (in your code): secrets.token_urlsafe(32) (or generate_state()).
-
-Length: typically ~43 characters (depends on bytes used).
-
-Example:
-
+- **What**: CSRF protection token — random value tied to the auth request.
+- How produced (in our code): secrets.token_urlsafe(32) (or generate_state()).
+- Length: typically ~43 characters (depends on bytes used).
+- Example:
+```
 state = "u2FhKs0QfX7Z9qYb3LpTg4v8r1wHj6N_aP0s"
+```
 
-4) nonce
+### 4. nonce
 
 What: OIDC nonce to bind ID token to request — prevents token replay.
 
