@@ -48,6 +48,59 @@
 - Error handlers and exception handling (custom 404/500 pages)
 - Use of `secrets` & `cryptographic` randomness
   - High entropy randomness for `state`, `code_verifier`, `tokens`.
+ 
+## The flow
+
+1. **User visits the app and clicks "login".** The browser makes a request to your FastAPI app (e.g. `/auth/microsoft`).
+   
+3. Server generates **PKCE** and **state values**. The app (server code) generates:
+  - a `code_verifier` (**random secret**),
+  - a `code_challenge` (**SHA256** of the verifier),
+  - a `state` (CSRF guard).
+These values are created **on the server**, **not by the remote authorization server**.
+
+3. The server stores **those values in two places**.
+  - It stores them in `request.session` (**Starlette session**). Important: with Starlette's default `SessionMiddleware`, **session data is serialized into a cookie** and **sent to the browser** (signed but not encrypted).
+  - It also stores {`state` -> `code_verifier`, `timestamp`} in **an in-memory** `StateStore` as a server-side backup.
+    
+4. Server **builds the authorization URL** and **redirects the user's browser**.
+The URL includes
+  - `client_id`,
+  - `response_type=code`,
+  - `redirect_uri`,
+  - `scope`,
+  - `state`,
+  - `code_challenge`, and
+  - `code_challenge_method=S256`.
+The browser is redirected to **Microsoft’s authorization endpoint**.
+
+6. **User authenticates & consents at Microsoft**.
+Microsoft prompts the user to **sign in/consent**. The authorization server **records the authorization grant**, including the `code_challenge` and `state` **associated with that authorization request**, so it can verify them later when the code is exchanged.
+
+7. **Authorization server redirects the browser** back to your `callback` with `code` and `state`.
+Microsoft sends the browser back to `REDIRECT_URI` (our `/auth/callback`) with **query parameters like ?code=...&state=....**
+
+8. Your **callback retrieves** `state` and `code_verifier`, then **exchanges the code for tokens**.
+  - The callback checks the `state` against the `session oauth_state` (and — if the session was lost — it looks up the `code_verifier` in the **in-memory** `StateStore` backup).
+  - It retrieves the `code_verifier` (from **session** or **backup**) and then makes a server-side POST to the token endpoint with:
+    - `client_id`,
+    - `client_secret`,
+    - `code`,
+    - `redirect_uri`,
+    - `grant_type=authorization_code`, and
+    - `code_verifier`.
+
+8. **Authorization server validates the token request**.
+The **auth server verifies the authorization code**, ensures the `code_verifier` matches the previously stored `code_challenge`, verifies the `client_id` (and `client_secret` if provided), and checks redirect URI, etc.
+
+9. **If valid, the token endpoint returns tokens**.
+Microsoft returns `access_token`, `id_token` (because we asked for openid), and usually `refresh_token` and `expires_in`.
+
+10. **Our app decodes/uses the ID token and stores user info**.
+In the code we call `validate_id_token()` then put **user info** and **tokens** into `request.session` and set `login_time`. We then clear `code_verifier` and `oauth_state` from the **session** and redirect the user to `/`.
+
+11. **The app can use the access token to call our services**.
+When we need protected resources, use the `access_token` in `Authorization headers`. When the token expires, use the `refresh_token` **to get a new access token**.
 
 ## Deep dive
 
@@ -129,174 +182,52 @@ POST /token
 
 ## The flow
 
-```mermaid
-sequenceDiagram
-    participant User as User Browser
-    participant App as FastAPI App
-    participant Session as Session Store
-    participant Backup as Backup State Store
-    participant MS as Microsoft Entra ID
-    participant Token as Token Endpoint
+## Improvements
 
-    Note over User, Token: OAuth 2.0 PKCE Flow - Complete Process
+1. You do NOT fully validate the ID token.
+validate_id_token() currently uses jwt.get_unverified_claims(id_token) — that only reads claims without verifying signature, issuer, audience, expiration, or nonce. This is unsafe. You must fetch Microsoft’s JWKS and verify the JWT signature and claims (iss, aud, exp, nonce).
 
-    %% 1. Initial Access
-    User->>App: GET /
-    App->>Session: Check for user session
-    Session-->>App: No user found
-    App-->>User: 200 OK - Home page (anonymous)
+2. You did not use or validate a nonce.
+For OpenID Connect you should send a nonce in the authorization request and verify the same nonce claim in the id_token. This prevents replay attacks on the ID token.
 
-    %% 2. Login Initiation
-    User->>App: Click "Login with Microsoft"
-    App->>App: GET /login
-    App-->>User: 200 OK - Login page
+3. Session storage is client-side by default (cookie).
+With Starlette’s default SessionMiddleware, request.session is serialized into a cookie (signed but not encrypted). That means code_verifier, access_token, and refresh_token may be stored in the browser cookie. That is risky. Use a server-side session store (Redis, database) or encrypt server-side.
 
-    %% 3. OAuth Flow Initiation
-    User->>App: Click "Sign in with Microsoft"
-    App->>App: GET /auth/microsoft
-    
-    %% 4. PKCE Generation
-    Note over App: Generate PKCE Parameters
-    App->>App: code_verifier = base64(random_32_bytes)<br/>Format: "wF3n_MM-UpaCfPebO_GD4yG91uJNsU6ptaKsAYagO5M"
-    App->>App: code_challenge = base64(sha256(code_verifier))<br/>Format: "EboEzGmFj2DW-whIFq6wv_0XgZ2gJASLdpQv5dme1c4"
-    App->>App: state = random_32_bytes<br/>Format: "n1w24kbvPQqZb59EfAmUdoFWDma5BW-DQwuFplZTCa4"
+4. You log sensitive data.
+The code logs request.session, request.cookies, and token info in debug. Don’t log tokens, code_verifier, client_secret, or full session data.
 
-    %% 5. Store State (Dual Storage)
-    App->>Session: Store code_verifier & oauth_state
-    App->>Backup: Store state -> code_verifier mapping
-    Note over Backup: Backup: {"n1w24k...": {"code_verifier": "wF3n...", "timestamp": "2025-09-18T14:34:18Z"}}
+5. Client secret hardcoded in source.
+Do not store CLIENT_SECRET (or SECRET_KEY) in code. Use environment variables or a secret manager.
 
-    %% 6. Build Authorization URL
-    Note over App: Build Authorization URL
-    App->>App: auth_url = "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize"<br/>+ "?client_id=d95e0397-1de4-4434-a540-3aa5e3c73c94"<br/>+ "&response_type=code"<br/>+ "&redirect_uri=http://localhost:8080/auth/callback"<br/>+ "&scope=openid profile email"<br/>+ "&state=n1w24kbvPQqZb59EfAmUdoFWDma5BW-DQwuFplZTCa4"<br/>+ "&code_challenge=EboEzGmFj2DW-whIFq6wv_0XgZ2gJASLdpQv5dme1c4"<br/>+ "&code_challenge_method=S256"<br/>+ "&response_mode=query"
+6. No token refresh logic implemented.
+You store refresh_token but do not refresh access tokens when they expire. Add a refresh flow (POST grant_type=refresh_token) and maintain expiry (expires_in).
 
-    App-->>User: 302 Redirect to Microsoft
+7. Blocking I/O in async routes.
+You use requests.post inside async endpoints. requests is synchronous and will block the event loop. Use an async HTTP client (e.g., httpx.AsyncClient) or run blocking calls in a threadpool.
 
-    %% 7. Microsoft Authentication
-    User->>MS: GET /oauth2/v2.0/authorize (with PKCE params)
-    MS-->>User: 200 OK - Microsoft Login Page
-    User->>MS: Enter credentials
-    MS->>MS: Validate user credentials
-    MS->>MS: Validate client_id & redirect_uri
-    MS->>MS: Store code_challenge for later verification
+8. StateStore is in-memory, not suitable for multiple instances.
+Your StateStore is process memory. If you run multiple app instances, session or backup lookups will fail. Use Redis or other shared store for state/code_verifier backup.
 
-    %% 8. Authorization Code Generation
-    Note over MS: Generate Authorization Code
-    MS->>MS: authorization_code = "1.ARIATCcX37b_90WE0xd658a9H..."<br/>(~2000 characters, expires in 10 minutes)
-    MS-->>User: 302 Redirect to callback with code & state
+9. Cookie flags for production.
+In production, set session cookie Secure=True, HttpOnly=True, and appropriate SameSite. Use HTTPS and set https_only=True for SessionMiddleware.
 
-    %% 9. Callback Handling
-    User->>App: GET /auth/callback?code=1.ARIATCcX...&state=n1w24k...
-    App->>Session: Check for oauth_state
-    Session-->>App: Session empty (session lost!)
-    
-    Note over App: Session Recovery Process
-    App->>App: session_state = None, received_state = "n1w24k..."
-    App->>App: Log: "State mismatch - Session: None, Received: n1w24k..."
-    App->>Session: Get code_verifier from session
-    Session-->>App: None (session lost)
-    App->>Backup: Get code_verifier using received state
-    Backup-->>App: "wF3n_MM-UpaCfPebO_GD4yG91uJNsU6ptaKsAYagO5M"
-    App->>App: Log: "Retrieved state from backup store"
-    App->>Backup: Remove used state entry
+10. No signature/claim checks for ID tokens and no audience/issuer validation.
+See #1. Check aud equals CLIENT_ID, iss equals Microsoft issuer for your tenant, exp not expired, etc.
 
-    %% 10. Token Exchange
-    Note over App: Prepare Token Exchange
-    App->>App: token_data = {<br/>  "client_id": "d95e0397-1de4-4434-a540-3aa5e3c73c94",<br/>  "client_secret": "5Mj8Q~IuFrRrnAuGeAWnEnmsQQSXZwOAmitc1csz",<br/>  "code": "1.ARIATCcX37b_90WE0xd658a9H...",<br/>  "redirect_uri": "http://localhost:8080/auth/callback",<br/>  "grant_type": "authorization_code",<br/>  "code_verifier": "wF3n_MM-UpaCfPebO_GD4yG91uJNsU6ptaKsAYagO5M"<br/>}
+11. No CSRF/extra checks beyond state.
+state is good, but validate strictly. Currently if state mismatches you don't fail immediately — you try backup. That is OK to handle session loss, but be careful and log carefully.
 
-    App->>Token: POST /oauth2/v2.0/token (with PKCE verification)
-    
-    Note over Token: Token Validation Process
-    Token->>Token: 1. Validate authorization_code (not expired, not used)
-    Token->>Token: 2. Validate client_id & client_secret
-    Token->>Token: 3. Validate redirect_uri matches registration
-    Token->>Token: 4. PKCE Verification:<br/>   - Get stored code_challenge<br/>   - Calculate sha256(code_verifier)<br/>   - Compare with code_challenge<br/>   - Must match exactly
-    Token->>Token: 5. Generate tokens if all validations pass
+No nonce handling for ID token.
 
-    %% 11. Token Response
-    Note over Token: Generate Token Response
-    Token->>Token: access_token = JWT with user claims<br/>expires_in = 3600 seconds
-    Token->>Token: id_token = JWT with user identity<br/>Contains: sub, name, email, preferred_username
-    Token->>Token: refresh_token = Opaque string for token refresh<br/>expires_in = ~90 days
+See #2. Add nonce both for security and correct OIDC usage.
 
-    Token-->>App: 200 OK + Token JSON:<br/>{<br/>  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIs...",<br/>  "token_type": "Bearer",<br/>  "expires_in": 3600,<br/>  "scope": "openid profile email",<br/>  "id_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIs...",<br/>  "refresh_token": "1.ARIATCcX37b_90WE0xd658a9H..."<br/>}
+Logout token revocation not implemented.
 
-    %% 12. ID Token Validation
-    Note over App: ID Token Processing
-    App->>App: Parse ID token header (unverified)
-    App->>App: Parse ID token payload (unverified)<br/>payload = {<br/>  "sub": "AAAAAaaaAAA-UserObjectId",<br/>  "name": "John Doe",<br/>  "preferred_username": "john.doe@company.com",<br/>  "email": "john.doe@company.com",<br/>  "exp": 1726677261,<br/>  "iat": 1726673661,<br/>  "aud": "d95e0397-1de4-4434-a540-3aa5e3c73c94",<br/>  "iss": "https://login.microsoftonline.com/{tenant}/v2.0"<br/>}
-    App->>App: Basic validation (expiry check)
-    App->>App: Extract user information
+You redirect to Microsoft logout, but you may also want to revoke refresh tokens at the token revocation endpoint on logout.
 
-    %% 13. Session Creation
-    Note over App: Create User Session
-    App->>App: user_data = {<br/>  "sub": "AAAAAaaaAAA-UserObjectId",<br/>  "name": "John Doe",<br/>  "email": "john.doe@company.com",<br/>  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGci...",<br/>  "refresh_token": "1.ARIATCcX37b_90WE0xd658a9H..."<br/>}
-    App->>Session: Store user_data & login_time
-    App->>Session: Remove oauth_state & code_verifier (cleanup)
+Timezones / datetime usage.
 
-    App-->>User: 302 Redirect to /
-
-    %% 14. Authenticated Access
-    User->>App: GET /
-    App->>Session: Check for user session
-    Session-->>App: Return user_data
-    App->>App: Check login_time < 1 hour (session validity)
-    App-->>User: 200 OK - Home page (authenticated)<br/>Display: "Welcome, John Doe"
-
-    %% 15. Protected Resource Access
-    User->>App: GET /debug-info
-    App->>Session: Check authentication (get_current_user)
-    Session-->>App: Return user_data
-    App-->>User: 200 OK - Debug page with user info
-
-    %% 16. Logout Process
-    User->>App: GET /logout
-    App->>Session: Clear all session data
-    App-->>User: 302 Redirect to Microsoft logout:<br/>"https://login.microsoftonline.com/{tenant}/oauth2/v2.0/logout<br/>?post_logout_redirect_uri=http://localhost:8080/logout-complete"
-    User->>MS: Microsoft logout
-    MS-->>User: 302 Redirect to /logout-complete
-    User->>App: GET /logout-complete
-    App-->>User: 200 OK - Logout confirmation page
-
-    %% Error Scenarios
-    Note over User, Token: Common Error Scenarios
-
-    %% Session Loss Scenario (Already shown above in step 9)
-    
-    %% Invalid State Scenario
-    rect rgb(255, 240, 240)
-        Note over App: Error: Invalid State Parameter
-        App->>App: If state doesn't match any stored state
-        App-->>User: 302 Redirect /login?error=invalid_state
-    end
-
-    %% Token Exchange Errors
-    rect rgb(255, 240, 240)
-        Note over Token: Error: PKCE Verification Failed
-        Token->>Token: sha256(received_code_verifier) ≠ stored_code_challenge
-        Token-->>App: 400 Bad Request: "invalid_grant"
-    end
-
-    rect rgb(255, 240, 240)
-        Note over Token: Error: Client Configuration Mismatch
-        Token->>Token: Public client + client_secret provided
-        Token-->>App: 401 Unauthorized: "AADSTS700025"
-    end
-```
-
-## Improvements:
-- **Rotate** all exposed credentials now and treat them as compromised.
-- Implement **proper JWT verification** using JWKS, `check` `exp`, `aud`, `iss`.
-- Move secrets to **a secret manager**; do not hardcode secrets in repo.
-- Set **secure cookie flags** in production: `Secure=True`, `HttpOnly=True`, `SameSite=Lax/Strict`.
-- **Harden CSP** and **remove** `'unsafe-inline' / *; use nonces/hashes.`
-- **Disable verbose DEBUG logging** in prod; redact tokens and sensitive fields in logs.
-- **Remove or protect debug endpoints** — **restrict to internal networks or admin roles**.
-- Use a **distributed store for state & rate limiter (Redis) for scaling**.
-- Validate **redirect URIs** & protect against open redirects.
-- **Implement token revocation** on logout if supported by provider.
-- **Add automated tests** and **CI checks** to prevent **insecure defaults** from being merged.
-- **Use TLS everywhere** (`https_only=True`) and enforce **HSTS in production**.
+You use naive datetime with utcnow() and fromisoformat(); being explicit about timezone (aware datetimes) avoids subtle bugs.
 
 ## Bibliography
 - https://developer.reachfive.com/docs/flows/authorization-code-pkce.html
