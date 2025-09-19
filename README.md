@@ -139,6 +139,260 @@ sequenceDiagram
     end
 ```
 
+## Code / tokens
+
+| Token/Code                    | Purpose                 | Real-life Value               | Consequence if Missing           |
+| ----------------------------- | ----------------------- | ----------------------------- | -------------------------------- |
+| `code_verifier`               | PKCE secret             | Prevent code theft            | Token request fails, PKCE broken |
+| `code_challenge`              | PKCE hash               | Links request to verifier     | Auth server may reject code      |
+| `state`                       | CSRF protection         | Prevents CSRF attacks         | Flow hijack possible             |
+| `nonce`                       | OIDC replay protection  | ID token bound to request     | ID token could be reused         |
+| `authorization code` (`code`) | Temporary grant         | Exchange for tokens           | Cannot get access or ID token    |
+| `access_token`                | API authorization       | Call protected resources      | Cannot access APIs               |
+| `refresh_token`               | Refresh access token    | Keep user logged in           | User must re-login on expiry     |
+| `id_token`                    | User identity           | Know user info                | Cannot identify user             |
+| `session cookie`              | Store user/session data | Maintain login state          | User logged out every request    |
+| JWKS                          | Token verification      | Ensure ID token is legitimate | Cannot trust user identity       |
+
+### 1. `code_verifier`
+
+- **What**: A cryptographically random secret used by the client to prove it initiated the auth request (PKCE).
+- **Purpose**: It proves to the authorization server that the token request is coming from the same client that started the authorization request (PKCE security). Prevents “authorization code interception” attacks, especially for public clients (mobile apps, SPAs, or when session cookies might be exposed).
+- **How produced (in our code)**: `base64.urlsafe_b64encode(secrets.token_bytes(32)).decode().rstrip('=')`
+- **Allowed chars (RFC 7636)**: letters, digits and - . _ ~ (but base64url typically yields A-Za-z0-9-_)
+- **Length (RFC)**: between 43 and 128 characters.
+
+```
+code_verifier = "qH1a8fGkL3v9Y2Q0bTf7PzUoWc4mR5xA6n_0XyZq-1"
+```
+
+
+### 2. code_challenge (S256)
+
+What: The SHA-256 digest of code_verifier, base64url-encoded (no = padding).
+
+How: code_challenge = base64url_encode( SHA256(code_verifier) ).rstrip('=')
+
+Length: SHA-256 digest is 32 bytes → base64url length 44 with padding → after removing padding 43 characters.
+
+Example derivation (pseudocode):
+
+digest = SHA256("qH1a8fGkL3v9Y2Q0...")
+code_challenge = base64url(digest).rstrip("=")
+
+
+Example:
+
+code_challenge = "X8h6s9V6y2tQW3xLaFzPq7eU-3jBv1yY9Rkz4dQwHqM"
+
+3) state
+
+What: CSRF protection token — random value tied to the auth request.
+
+How produced (in your code): secrets.token_urlsafe(32) (or generate_state()).
+
+Length: typically ~43 characters (depends on bytes used).
+
+Example:
+
+state = "u2FhKs0QfX7Z9qYb3LpTg4v8r1wHj6N_aP0s"
+
+4) nonce
+
+What: OIDC nonce to bind ID token to request — prevents token replay.
+
+How: secrets.token_urlsafe(...) (server generates, stores in session and sends in authorization request).
+
+Example:
+
+nonce = "n8SxT2v9dQ7_aB4mYwL0"
+
+5) Authorization Code (code) — returned by authorization server
+
+What: Short-lived code returned to redirect_uri after user authenticates. Used once to exchange for tokens.
+
+Format: Opaque string, often URL-safe characters.
+
+Lifetime: short (usually a few minutes) and single-use.
+
+Example:
+
+code = "AQABAAIAAAAmK...Zx"  (short opaque string)
+
+6) Token request (exchange code for tokens) — HTTP POST (form encoded)
+
+Example request (application/x-www-form-urlencoded):
+
+POST https://login.microsoftonline.com/<TENANT>/oauth2/v2.0/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id=YOUR_CLIENT_ID
+&client_secret=YOUR_CLIENT_SECRET    # optional with public clients; present in confidential clients
+&grant_type=authorization_code
+&code=AUTH_CODE_FROM_CALLBACK
+&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fauth%2Fcallback
+&code_verifier=CODE_VERIFIER_VALUE
+
+7) Token response (JSON) — example
+{
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "ext_expires_in": 3600,
+  "access_token": "eyJhbGciOiJ... (or opaque string)",
+  "refresh_token": "0.AAA...opaque.refresh.token...",
+  "id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6Ij...signature"
+}
+
+
+access_token: used with Authorization: Bearer <access_token> to call resource APIs.
+
+refresh_token: keep confidential, used to request new access tokens.
+
+id_token: OpenID Connect token (a JWT). It proves the user's identity.
+
+8) id_token (OpenID Connect ID token) — JWT format
+
+Structure: header.payload.signature — three base64url parts separated by .
+
+Header example:
+
+{"alg":"RS256","kid":"abcd1234","typ":"JWT"}
+
+
+base64url -> e.g. eyJhbGciOiJSUzI1NiIsImtpZCI6ImFiY2QxMjM0In0
+
+Payload (claims) example:
+
+{
+  "iss": "https://login.microsoftonline.com/<TENANT>/v2.0",
+  "sub": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+  "aud": "YOUR_CLIENT_ID",
+  "exp": 1730000000,
+  "iat": 1729996400,
+  "nonce": "n8SxT2v9dQ7_aB4mYwL0",
+  "name": "Alice Example",
+  "preferred_username": "alice@example.com",
+  "email": "alice@example.com"
+}
+
+
+Signature: signed by provider (RS256 usually) — base64url segment.
+
+Full example (dummy):
+
+id_token = "eyJhbGciOiJSUzI1NiIsImtpZCI6ImFiYy...header... . eyJpc3MiOiJodHRwczovL2...payload... . SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+
+9) access_token (format possibilities)
+
+Opaque string: random-looking string (common in some providers).
+
+Example: access_token = "0.AAAAABBBB.CCddEEfGh..."
+
+JWT: sometimes the access_token itself is a JWT (signed token) — format like id_token.
+
+Example: access_token = "eyJraWQiOiJ... (header).eyJzdWIiOi... (payload).signature"
+
+Usage: Authorization: Bearer <access_token>
+
+10) refresh_token
+
+What: Long-lived, opaque token used to obtain new access tokens.
+
+Format: opaque string (not JWT).
+
+Example:
+
+refresh_token = "0.AAAABBBBCCCCDDDD1234abcd...long-opaque-string"
+
+11) Session cookie (how request.session is stored by default)
+
+What: Starlette/SessionMiddleware serializes session dict into a cookie (signed). That means values like code_verifier, access_token, refresh_token may end up in the cookie unless you change storage.
+
+Example (conceptual):
+
+Set-Cookie: session="gAJ9cQE...signed_base64..."; Path=/; HttpOnly; SameSite=Lax; Secure
+
+
+Warning: This is risky for tokens. Better to use server-side sessions (Redis or DB) or encrypt cookie contents.
+
+12) JWKS (JSON Web Key Set) — public keys used to verify JWTs
+
+Usage: fetch from /.well-known/openid-configuration → jwks_uri, then GET the JWKS JSON.
+
+One key entry example:
+
+{
+  "keys": [
+    {
+      "kty": "RSA",
+      "kid": "abcd1234",
+      "use": "sig",
+      "alg": "RS256",
+      "n": "0vx7agoebGcQS...base64url-modulus...",
+      "e": "AQAB"
+    }
+  ]
+}
+
+Example end-to-end (compact) — GET URL and token exchange
+
+Authorization request (browser GET):
+
+GET https://login.microsoftonline.com/<TENANT>/oauth2/v2.0/authorize?
+client_id=YOUR_CLIENT_ID
+&response_type=code
+&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fauth%2Fcallback
+&scope=openid%20profile%20email
+&state=u2FhKs0QfX7...
+&code_challenge=X8h6s9V6y2t...
+&code_challenge_method=S256
+&nonce=n8SxT2v9...
+
+
+Token exchange (server-side POST):
+
+POST https://login.microsoftonline.com/<TENANT>/oauth2/v2.0/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id=YOUR_CLIENT_ID
+&client_secret=YOUR_CLIENT_SECRET
+&grant_type=authorization_code
+&code=AUTH_CODE_FROM_CALLBACK
+&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fauth%2Fcallback
+&code_verifier=qH1a8fGkL3v9Y2Q0bTf7Pz...
+
+
+Token response (JSON) — example already shown above.
+
+Quick pseudocode: compute code_challenge (Python-like)
+import hashlib, base64
+
+def code_challenge_from_verifier(verifier: str) -> str:
+    digest = hashlib.sha256(verifier.encode('ascii')).digest()
+    b64 = base64.urlsafe_b64encode(digest).decode('ascii')
+    return b64.rstrip('=')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ## Deep dive
