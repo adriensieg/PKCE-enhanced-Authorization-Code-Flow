@@ -1,6 +1,98 @@
 ## OAuth 2.0 with PKCE Flow:
 
-## Concepts
+## Requirements before starting: 
+### Public vs. Private App
+
+- **Public Client**
+  - An application that **cannot safely store secrets** (e.g., mobile apps, SPAs, CLI tools).
+  - Uses **PKCE to protect against code interception**.
+  - Does **not authenticate** with a **client secret**.
+  - **No secure server-side environment**
+    - In public clients, all code executes **on devices** you don’t control.
+    - Unlike a backend server, there’s **no trusted**, **isolated runtime** to protect the secret.
+
+- **Confidential Client (Private)**
+  - An application that can **safely store secrets** (e.g., server-side apps, daemons).
+  - Uses **client secret** or **certificate for authentication**.
+  - Can also use **PKCE as an additional security layer**.
+
+| Aspect                 | Public Client (PKCE only)           | Confidential Client (Secret/Cert + PKCE optional) |
+| ---------------------- | ----------------------------------- | ------------------------------------------------- |
+| **Secret storage**     | No secret (unsafe environment)      | Secret or certificate securely stored             |
+| **PKCE usage**         | Required                            | Optional (but recommended)                        |
+| **Security guarantee** | Proof-of-possession (via PKCE) only | Secret-based authentication + optional PKCE       |
+| **Use cases**          | Mobile apps, SPAs, CLI tools        | Server-side apps, web APIs, background services   |
+
+### What you need from Azure Entra ID
+
+- **Public Client (PKCE only)**
+  - `Tenant ID` (or domain)
+  - `Client ID`
+  - `Redirect URI(s)` (registered as public client)
+  - `Scopes` (openid profile offline_access + APIs)
+  - `Code challenge/verifier` (runtime-generated, not from Entra)
+
+👉 No client secret.
+
+- **Confidential Client (Secret or Certificate)**
+  - `Tenant ID` (or domain)
+  - `Client ID`
+  - `Redirect URI(s)`
+  - `Scopes`
+  - `Client secret` or `certificate` (securely stored)
+  - (Optional) `PKCE` support - `Code challenge/verifier`
+
+👉 PKCE + secret/cert = strongest protection.
+
+
+### Deep Dive
+1. **Tenant ID (or domain)**
+  - Used in our authority URLs:
+```
+https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/authorize
+https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token
+```
+
+2. **Client (Application) ID**
+  - Identifies your app.
+
+3. **Redirect URI**
+  - Must be registered in the app as a public client redirect URI (e.g. `http://localhost:5000/callback` if developing locally).
+
+4. **Scopes**
+  - At minimum: `openid` `profile` `offline_access`
+  - Plus any API scopes (e.g. `api://<resource-app-id>/.default` or `https://graph.microsoft.com/User.Read`).
+
+5. **Flow with PKCE (public client)**
+  1. Create `code verifier` + `challenge`
+    - Generate a random string (`code_verifier`) and its **SHA256-based Base64URL-encoded hash** (`code_challenge`).
+  2. Authorization request (user signs in) - Send user to:
+```
+GET https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize
+?client_id={client_id}
+&response_type=code
+&redirect_uri={redirect_uri}
+&response_mode=query
+&scope={scopes}
+&code_challenge={code_challenge}
+&code_challenge_method=S256
+```
+👉 User signs in, Entra ID redirects back with `?code=...`
+
+  3. Token exchange (server-side, no secret)
+```
+POST https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id={client_id}
+grant_type=authorization_code
+code={authorization_code}
+redirect_uri={redirect_uri}
+code_verifier={code_verifier}
+```
+👉 Returns `id_token`, `access_token`, `refresh_token`
+
+## Concepts in this tutorial
 
 ### Authorization Code Flow with PKCE (S256 method)
 - PKCE (Proof Key for Code Exchange) adds a `code_verifier` and `code_challenge` to bind the code to the client
