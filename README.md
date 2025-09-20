@@ -296,10 +296,9 @@ nonce = "n8SxT2v9dQ7_aB4mYwL0"
 code = "AQABAAIAAAAmK...Zx"  
 ```
 
-### 6. Access Token — returned by token endpoint
+### 6. `Access Token` — returned by token endpoint
 - **What**: Token our app presents when calling our protected resources such APIs (resource server). Authorization credential — **proves the client has permission to access specific resources on behalf of the user**. Enables your app to **fetch user data** or call APIs **without asking the user to log in again**. If missing: The app cannot access APIs; calls return `401 Unauthorized`.
-
-Example request (form-encoded):
+- **Example request (form-encoded)**:
 ```
 POST https://login.microsoftonline.com/<TENANT>/oauth2/v2.0/token
 Content-Type: application/x-www-form-urlencoded
@@ -312,7 +311,7 @@ client_id=YOUR_CLIENT_ID
 &code_verifier=CODE_VERIFIER_VALUE
 ```
 
-### 7. Refresh Token — included in token response
+### 7. `Refresh Token` — included in token response
 - **What**: Long-lived token that can be used to request new access_tokens without user interaction.
 - **Purpose**: Keeps the user “logged in” seamlessly by renewing expired access tokens. Greatly improves user experience by avoiding repeated logins. If missing: Once the access_token expires, the user must log in again.
 - **Example token response** (truncated):
@@ -327,9 +326,9 @@ client_id=YOUR_CLIENT_ID
 }
 ```
 
-### 8. ID Token (id_token) — OpenID Connect identity token
+### 8. `ID Token` (`id_token`) — OpenID Connect identity token
 - **What**: A JWT that contains claims about the authenticated user.
-- **Purpose**: Authentication proof — tells your app who the user is. Provides user identity (name, email, subject ID). Used for SSO and displaying logged-in user info. If missing: You cannot reliably identify the user, even if you have an access token.
+- **Purpose**: **Authentication proof** — **tells your app who the user is**. Provides user identity (name, email, subject ID). Used for SSO and displaying logged-in user info. If missing: We cannot reliably identify the user, even if you have an access token. **Identifies the user (SSO, user info)**
 - **Example payload claims**:
 ```
 {
@@ -345,9 +344,9 @@ client_id=YOUR_CLIENT_ID
 }
 ```
 
-### 9. Access Token (Format)
-- What: Can be either opaque string or JWT depending on provider.
-- **Purpose**: Always the same — to authorize API calls.
+### 9. `Access Token`
+- **What**: Can be either opaque string or JWT depending on provider.
+- **Purpose**: Always the same — to authorize API/ towards our resource server calls.
 - **Opaque string**: Random string; must be introspected at the authorization server.
   
 ```
@@ -359,22 +358,22 @@ access_token = "eyJraWQiOiJ...header.eyJzdWIiOi...payload.signature"
 ```
 
 ### 10. Refresh Token (Format)
-- What: Always an opaque string (not JWT).
-- Purpose / Goal: Allows token renewal without user login. Supports long-lived sessions (weeks/months). If missing: User re-authenticates whenever the access_token expires.
-- Example:
+- **What**: Always an opaque string (not JWT).
+- **Purpose**: Allows token renewal without user login. Supports long-lived sessions (weeks/months). If missing: User re-authenticates whenever the access_token expires.
+- **Example**:
 ```
 refresh_token = "0.AAAABBBBCCCCDDDD1234abcd...long-opaque-string"
 ```
 
-### 11. Session Cookie (default request.session)
-- **What**: By default, Starlette/SessionMiddleware serializes session dict into a signed cookie.
+### 11. `Session Cookie` (default `request.session`)
+- **What**: By default, `Starlette/SessionMiddleware` serializes session dict into a **signed cookie**.
 - **Purpose**: Persists temporary state (e.g. code_verifier, oauth_state) between browser and server. Required for completing OAuth flows. If misused: Storing tokens here is risky (they live in the browser and can leak). Best practice = store server-side (DB/Redis).
 - **Example (conceptual)**:
 ```
 Set-Cookie: session="gAJ9cQE...signed_base64..." ; HttpOnly ; Secure ; SameSite=Lax
 ```
 
-### 12. JWKS (JSON Web Key Set) — public signing keys
+### 12. `JWKS` (JSON Web Key Set) — public signing keys
 - **What**: JSON document containing public keys used to verify JWTs (id_token / JWT access_token).
 - **Purpose**: Enables your app to validate tokens’ signatures without hardcoding keys. Provides cryptographic proof that tokens really came from the authorization server. If missing: You cannot safely trust any JWT — anyone could forge them.
 - **Example**:
@@ -391,7 +390,6 @@ Set-Cookie: session="gAJ9cQE...signed_base64..." ; HttpOnly ; Secure ; SameSite=
     }
   ]
 }
-
 ```
 
 ## Deep dive
