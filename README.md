@@ -245,11 +245,10 @@ sequenceDiagram
 | JWKS                          | Token verification      | Ensure ID token is legitimate |
 
 ### 1. `code_verifier`
-- **What**: A cryptographically random secret used by the client to prove it initiated the auth request (PKCE).
-- **Purpose**: It proves to the authorization server that the token request is coming from the same client that started the authorization request (PKCE security). Prevents “authorization code interception” attacks, especially for public clients (mobile apps, SPAs, or when session cookies might be exposed).
+- **What**: A cryptographically random secret used by the **client to prove it initiated the auth request (PKCE).**
+- **Purpose**: It proves to the **authorization server** that the **token request** is **coming from the same client** that started the authorization request (PKCE security). Prevents **“authorization code interception” attacks**, especially for **public clients** (mobile apps, SPAs, or when session cookies might be exposed).
 - **How produced (in our code)**: `base64.urlsafe_b64encode(secrets.token_bytes(32)).decode().rstrip('=')`
-- **Allowed chars (RFC 7636)**: letters, digits and - . _ ~ (but base64url typically yields A-Za-z0-9-_)
-- **Length (RFC)**: between 43 and 128 characters.
+
 ```
 code_verifier = "qH1a8fGkL3v9Y2Q0bTf7PzUoWc4mR5xA6n_0XyZq-1"
 ```
@@ -287,70 +286,52 @@ http://reflectoring.io/complete-guide-to-csrf/
 nonce = "n8SxT2v9dQ7_aB4mYwL0"
 ```
 
-### 5. Authorization Code (code) — returned by authorization server
-- **What**: Short-lived code returned to `redirect_uri` **after user authenticates**. **Used once to exchange for tokens**. **Short-lived**, **single-use string** returned to our `/auth/callback`. **Temporary proof** that the user **authenticated** and **consented**. Must be exchanged for actual tokens. **Keeps the access token off the browser URL and reduces exposure.** If missing - We cannot obtain `access_token` or `id_token`. The login fails.
-- **Format**: **Opaque string**, often **URL-safe characters**.
-- **Lifetime**: short (usually a few minutes) and single-use.
-
-Example:
+### 5. `Authorization Code` (code) — returned by authorization server
+- **What**: **Short-lived**, **single-use code** returned to your `redirect_uri` **after the user authenticates and consents**.
+- **Purpose / Goal**: Acts as **a temporary proof of user authentication**. It **allows the server** (**not the browser**) to **securely exchange it for tokens**. This keeps sensitive tokens (like `access_token` or `id_token`) **out of the browser URL**. **Prevents exposing tokens to front-end JavaScript**, browser history, logs, or referrers. Adds an **extra layer of security** via Proof Key for Code Exchange (PKCE). If missing: We cannot get an `access_token` or `id_token`; login flow fails.
+- **Format**: Opaque, **URL-safe string**.
+- **Lifetime**: Short (usually a few minutes), single-use.
+- **Example**:
 ```
-code = "AQABAAIAAAAmK...Zx"  (short opaque string)
+code = "AQABAAIAAAAmK...Zx"  
 ```
 
-### 6. Token request (exchange code for tokens) — HTTP POST (form encoded)
+### 6. Access Token — returned by token endpoint
+- **What**: Token our app presents when calling our protected resources such APIs (resource server). Authorization credential — **proves the client has permission to access specific resources on behalf of the user**. Enables your app to **fetch user data** or call APIs **without asking the user to log in again**. If missing: The app cannot access APIs; calls return `401 Unauthorized`.
 
-What it is: Token your server uses to call protected APIs (resource server).
-
-Purpose: Authorization — proves the client has permission to access certain resources.
-
-Real-life value: Lets your app fetch user info or protected data without asking the user to log in again.
-
-If missing: Your app cannot access the resource server; user experience is broken, APIs return 401 Unauthorized.
-
-Example request (application/x-www-form-urlencoded):
-
+Example request (form-encoded):
 ```
 POST https://login.microsoftonline.com/<TENANT>/oauth2/v2.0/token
 Content-Type: application/x-www-form-urlencoded
 
 client_id=YOUR_CLIENT_ID
-&client_secret=YOUR_CLIENT_SECRET    # optional with public clients; present in confidential clients
+&client_secret=YOUR_CLIENT_SECRET   # optional in public clients
 &grant_type=authorization_code
 &code=AUTH_CODE_FROM_CALLBACK
 &redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fauth%2Fcallback
 &code_verifier=CODE_VERIFIER_VALUE
 ```
 
-### 7. Token response (JSON) — example
+### 7. Refresh Token — included in token response
+- **What**: Long-lived token that can be used to request new access_tokens without user interaction.
+- **Purpose**: Keeps the user “logged in” seamlessly by renewing expired access tokens. Greatly improves user experience by avoiding repeated logins. If missing: Once the access_token expires, the user must log in again.
+- **Example token response** (truncated):
+
+```
 {
   "token_type": "Bearer",
   "expires_in": 3600,
-  "ext_expires_in": 3600,
-  "access_token": "eyJhbGciOiJ... (or opaque string)",
+  "access_token": "eyJhbGciOiJ...",
   "refresh_token": "0.AAA...opaque.refresh.token...",
-  "id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6Ij...signature"
+  "id_token": "eyJhbGciOiJSUzI1NiIs..."
 }
+```
 
-
-access_token: used with Authorization: Bearer <access_token> to call resource APIs.
-
-refresh_token: keep confidential, used to request new access tokens.
-
-id_token: OpenID Connect token (a JWT). It proves the user's identity.
-
-### 8. id_token (OpenID Connect ID token) — JWT format
-
-Structure: header.payload.signature — three base64url parts separated by .
-
-Header example:
-
-{"alg":"RS256","kid":"abcd1234","typ":"JWT"}
-
-
-base64url -> e.g. eyJhbGciOiJSUzI1NiIsImtpZCI6ImFiY2QxMjM0In0
-
-Payload (claims) example:
-
+### 8. ID Token (id_token) — OpenID Connect identity token
+- **What**: A JWT that contains claims about the authenticated user.
+- **Purpose**: Authentication proof — tells your app who the user is. Provides user identity (name, email, subject ID). Used for SSO and displaying logged-in user info. If missing: You cannot reliably identify the user, even if you have an access token.
+- **Example payload claims**:
+```
 {
   "iss": "https://login.microsoftonline.com/<TENANT>/v2.0",
   "sub": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
@@ -362,52 +343,41 @@ Payload (claims) example:
   "preferred_username": "alice@example.com",
   "email": "alice@example.com"
 }
+```
 
+### 9. Access Token (Format)
+- What: Can be either opaque string or JWT depending on provider.
+- **Purpose**: Always the same — to authorize API calls.
+- **Opaque string**: Random string; must be introspected at the authorization server.
+  
+```
+access_token = "0.AAAAABBBB.CCddEEfGh..."
+```
+- **JWT**: Self-contained token; can be validated locally.
+```
+access_token = "eyJraWQiOiJ...header.eyJzdWIiOi...payload.signature"
+```
 
-Signature: signed by provider (RS256 usually) — base64url segment.
-
-Full example (dummy):
-
-id_token = "eyJhbGciOiJSUzI1NiIsImtpZCI6ImFiYy...header... . eyJpc3MiOiJodHRwczovL2...payload... . SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
-
-9) access_token (format possibilities)
-
-Opaque string: random-looking string (common in some providers).
-
-Example: access_token = "0.AAAAABBBB.CCddEEfGh..."
-
-JWT: sometimes the access_token itself is a JWT (signed token) — format like id_token.
-
-Example: access_token = "eyJraWQiOiJ... (header).eyJzdWIiOi... (payload).signature"
-
-Usage: Authorization: Bearer <access_token>
-
-10) refresh_token
-
-What: Long-lived, opaque token used to obtain new access tokens.
-
-Format: opaque string (not JWT).
-
-Example:
-
+### 10. Refresh Token (Format)
+- What: Always an opaque string (not JWT).
+- Purpose / Goal: Allows token renewal without user login. Supports long-lived sessions (weeks/months). If missing: User re-authenticates whenever the access_token expires.
+- Example:
+```
 refresh_token = "0.AAAABBBBCCCCDDDD1234abcd...long-opaque-string"
+```
 
-11) Session cookie (how request.session is stored by default)
+### 11. Session Cookie (default request.session)
+- **What**: By default, Starlette/SessionMiddleware serializes session dict into a signed cookie.
+- **Purpose**: Persists temporary state (e.g. code_verifier, oauth_state) between browser and server. Required for completing OAuth flows. If misused: Storing tokens here is risky (they live in the browser and can leak). Best practice = store server-side (DB/Redis).
+- **Example (conceptual)**:
+```
+Set-Cookie: session="gAJ9cQE...signed_base64..." ; HttpOnly ; Secure ; SameSite=Lax
+```
 
-What: Starlette/SessionMiddleware serializes session dict into a cookie (signed). That means values like code_verifier, access_token, refresh_token may end up in the cookie unless you change storage.
-
-Example (conceptual):
-
-Set-Cookie: session="gAJ9cQE...signed_base64..."; Path=/; HttpOnly; SameSite=Lax; Secure
-
-
-Warning: This is risky for tokens. Better to use server-side sessions (Redis or DB) or encrypt cookie contents.
-
-12) JWKS (JSON Web Key Set) — public keys used to verify JWTs
-
-Usage: fetch from /.well-known/openid-configuration → jwks_uri, then GET the JWKS JSON.
-
-One key entry example:
+### 12. JWKS (JSON Web Key Set) — public signing keys
+- **What**: JSON document containing public keys used to verify JWTs (id_token / JWT access_token).
+- **Purpose**: Enables your app to validate tokens’ signatures without hardcoding keys. Provides cryptographic proof that tokens really came from the authorization server. If missing: You cannot safely trust any JWT — anyone could forge them.
+- **Example**:
 ```
 {
   "keys": [
@@ -421,48 +391,8 @@ One key entry example:
     }
   ]
 }
+
 ```
-
-Example end-to-end (compact) — GET URL and token exchange
-
-Authorization request (browser GET):
-
-GET https://login.microsoftonline.com/<TENANT>/oauth2/v2.0/authorize?
-client_id=YOUR_CLIENT_ID
-&response_type=code
-&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fauth%2Fcallback
-&scope=openid%20profile%20email
-&state=u2FhKs0QfX7...
-&code_challenge=X8h6s9V6y2t...
-&code_challenge_method=S256
-&nonce=n8SxT2v9...
-
-
-Token exchange (server-side POST):
-
-POST https://login.microsoftonline.com/<TENANT>/oauth2/v2.0/token
-Content-Type: application/x-www-form-urlencoded
-
-client_id=YOUR_CLIENT_ID
-&client_secret=YOUR_CLIENT_SECRET
-&grant_type=authorization_code
-&code=AUTH_CODE_FROM_CALLBACK
-&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fauth%2Fcallback
-&code_verifier=qH1a8fGkL3v9Y2Q0bTf7Pz...
-
-
-Token response (JSON) — example already shown above.
-
-Quick pseudocode: compute code_challenge (Python-like)
-import hashlib, base64
-
-def code_challenge_from_verifier(verifier: str) -> str:
-    digest = hashlib.sha256(verifier.encode('ascii')).digest()
-    b64 = base64.urlsafe_b64encode(digest).decode('ascii')
-    return b64.rstrip('=')
-
-
-
 
 ## Deep dive
 
