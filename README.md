@@ -245,7 +245,6 @@ sequenceDiagram
 | JWKS                          | Token verification      | Ensure ID token is legitimate |
 
 ### 1. `code_verifier`
-
 - **What**: A cryptographically random secret used by the client to prove it initiated the auth request (PKCE).
 - **Purpose**: It proves to the authorization server that the token request is coming from the same client that started the authorization request (PKCE security). Prevents “authorization code interception” attacks, especially for public clients (mobile apps, SPAs, or when session cookies might be exposed).
 - **How produced (in our code)**: `base64.urlsafe_b64encode(secrets.token_bytes(32)).decode().rstrip('=')`
@@ -255,8 +254,7 @@ sequenceDiagram
 code_verifier = "qH1a8fGkL3v9Y2Q0bTf7PzUoWc4mR5xA6n_0XyZq-1"
 ```
 
-### 2. code_challenge (S256)
-
+### 2. `code_challenge` (S256)
 - **What**: Derived from code_verifier (SHA256 + base64url). Sent to the authorization server in the initial request.
 - **Purpose**: Tells the authorization server how to check the `code_verifier` later. Only the holder of `code_verifier` can correctly respond. Links the initial authorization request with the token request securely.
 - **How**: `code_challenge = base64url_encode( SHA256(code_verifier) ).rstrip('=')`
@@ -267,42 +265,51 @@ code_challenge = base64url(digest).rstrip("=")
 code_challenge = "X8h6s9V6y2tQW3xLaFzPq7eU-3jBv1yY9Rkz4dQwHqM"
 ```
 
-### 3. state
+### 3. `state`
+- **What**: Random string generated at start, **stored in session and backup store**. 
+- **Purpose**: CSRF protection token — ensures the response coming to `/auth/callback` was initiated by the same client. — random value tied to the auth request.
+- **How produced (in our code)**: `secrets.token_urlsafe(32) (or generate_state()).`
 
-- **What**: CSRF protection token — random value tied to the auth request.
-- How produced (in our code): secrets.token_urlsafe(32) (or generate_state()).
-- Length: typically ~43 characters (depends on bytes used).
-- Example:
 ```
 state = "u2FhKs0QfX7Z9qYb3LpTg4v8r1wHj6N_aP0s"
 ```
+**Cross-Site Request Forgery**: **CSRF attack** leverages the **implicit trust** placed in **user session cookies** by many web applications.
+In these applications, **once the user authenticates**, **a session cookie is created** and **all subsequent transactions for that session are authenticated** using that cookie including potential actions initiated by an attacker by “riding” the existing session cookie. Due to this reason, CSRF is also called **“Session Riding”**.
 
-### 4. nonce
+http://reflectoring.io/complete-guide-to-csrf/
 
-What: OIDC nonce to bind ID token to request — prevents token replay.
-
-How: secrets.token_urlsafe(...) (server generates, stores in session and sends in authorization request).
-
-Example:
-
+### 4. `nonce`
+- **What**: OIDC nonce to **:bind `ID token` to `request`**: — prevents token replay. Random string stored in session and sent in the authorization request.
+- **How**: `secrets.token_urlsafe(...)` (server generates, stores in session and sends in authorization request).
+- **Purpose**: OIDC security; binds the `id_token` to the request, **:prevents replay attacks**:. Ensures the `id_token` is generated for this specific login request, not reused by an attacker. If missing - our `id_token` could be replayed by an attacker to **:impersonate a user**:.
+- **Example**:
+```
 nonce = "n8SxT2v9dQ7_aB4mYwL0"
+```
 
-5) Authorization Code (code) — returned by authorization server
-
-What: Short-lived code returned to redirect_uri after user authenticates. Used once to exchange for tokens.
-
-Format: Opaque string, often URL-safe characters.
-
-Lifetime: short (usually a few minutes) and single-use.
+### 5. Authorization Code (code) — returned by authorization server
+- **What**: Short-lived code returned to `redirect_uri` **after user authenticates**. **Used once to exchange for tokens**. **Short-lived**, **single-use string** returned to our `/auth/callback`. **Temporary proof** that the user **authenticated** and **consented**. Must be exchanged for actual tokens. **Keeps the access token off the browser URL and reduces exposure.** If missing - We cannot obtain `access_token` or `id_token`. The login fails.
+- **Format**: **Opaque string**, often **URL-safe characters**.
+- **Lifetime**: short (usually a few minutes) and single-use.
 
 Example:
-
+```
 code = "AQABAAIAAAAmK...Zx"  (short opaque string)
+```
 
-6) Token request (exchange code for tokens) — HTTP POST (form encoded)
+### 6. Token request (exchange code for tokens) — HTTP POST (form encoded)
+
+What it is: Token your server uses to call protected APIs (resource server).
+
+Purpose: Authorization — proves the client has permission to access certain resources.
+
+Real-life value: Lets your app fetch user info or protected data without asking the user to log in again.
+
+If missing: Your app cannot access the resource server; user experience is broken, APIs return 401 Unauthorized.
 
 Example request (application/x-www-form-urlencoded):
 
+```
 POST https://login.microsoftonline.com/<TENANT>/oauth2/v2.0/token
 Content-Type: application/x-www-form-urlencoded
 
@@ -312,8 +319,9 @@ client_id=YOUR_CLIENT_ID
 &code=AUTH_CODE_FROM_CALLBACK
 &redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fauth%2Fcallback
 &code_verifier=CODE_VERIFIER_VALUE
+```
 
-7) Token response (JSON) — example
+### 7. Token response (JSON) — example
 {
   "token_type": "Bearer",
   "expires_in": 3600,
@@ -330,7 +338,7 @@ refresh_token: keep confidential, used to request new access tokens.
 
 id_token: OpenID Connect token (a JWT). It proves the user's identity.
 
-8) id_token (OpenID Connect ID token) — JWT format
+### 8. id_token (OpenID Connect ID token) — JWT format
 
 Structure: header.payload.signature — three base64url parts separated by .
 
@@ -400,7 +408,7 @@ Warning: This is risky for tokens. Better to use server-side sessions (Redis or 
 Usage: fetch from /.well-known/openid-configuration → jwks_uri, then GET the JWKS JSON.
 
 One key entry example:
-
+```
 {
   "keys": [
     {
@@ -413,6 +421,7 @@ One key entry example:
     }
   ]
 }
+```
 
 Example end-to-end (compact) — GET URL and token exchange
 
@@ -451,26 +460,6 @@ def code_challenge_from_verifier(verifier: str) -> str:
     digest = hashlib.sha256(verifier.encode('ascii')).digest()
     b64 = base64.urlsafe_b64encode(digest).decode('ascii')
     return b64.rstrip('=')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
