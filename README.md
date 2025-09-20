@@ -46,18 +46,15 @@
 
 
 ### Deep Dive
-1. **Tenant ID (or domain)**
-  - Used in our authority URLs:
+1. **Tenant ID (or domain)** - Used in our authority URLs:
 ```
 https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/authorize
 https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token
 ```
 
-2. **Client (Application) ID**
-  - Identifies your app.
+2. **Client (Application) ID** - Identifies our app.
 
-3. **Redirect URI**
-  - Must be registered in the app as a public client redirect URI (e.g. `http://localhost:5000/callback` if developing locally).
+3. **Redirect URI** Must be registered in the app as a **public client** redirect URI (e.g. `http://localhost:5000/callback` if developing locally).
 
 4. **Scopes**
   - At minimum: `openid` `profile` `offline_access`
