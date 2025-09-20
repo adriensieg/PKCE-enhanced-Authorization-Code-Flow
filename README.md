@@ -62,8 +62,9 @@ https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token
 
 5. **Flow with PKCE (public client)**
 
-A. Create `code verifier` + `challenge`. Generate a random string (`code_verifier`) and its **SHA256-based Base64URL-encoded hash** (`code_challenge`).
-B. Authorization request (user signs in) - Send user to:
+**A.** Create `code verifier` + `challenge`. Generate a random string (`code_verifier`) and its **SHA256-based Base64URL-encoded hash** (`code_challenge`).
+
+**B.** Authorization request (user signs in) - Send user to:
 ```
 GET https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize
 ?client_id={client_id}
@@ -76,7 +77,7 @@ GET https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize
 ```
 👉 User signs in, Entra ID redirects back with `?code=...`
 
-C. **Token exchange** (server-side, no secret)
+**C.** **Token exchange** (server-side, no secret)
 ```
 POST https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token
 Content-Type: application/x-www-form-urlencoded
