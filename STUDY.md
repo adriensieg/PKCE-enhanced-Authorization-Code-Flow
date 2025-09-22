@@ -30,6 +30,16 @@
 
 <img width="75%" height="75%" alt="image" src="https://github.com/user-attachments/assets/c4ed6de1-c566-4cc8-9e27-504ff74de643" />
 
+Even if you tried to “obfuscate” or “encrypt” a secret, a determined attacker can still:
+
+## Why a Public Client Cannot Safely Store Secrets
+
+In public clients, **all code executes on devices you don’t control**. Unlike a backend server, there’s **no trusted**, **isolated runtime** to **protect the secret**.
+- Decompile the app
+- Intercept runtime memory
+- Use proxies (e.g., Fiddler, mitmproxy) to capture requests
+
+
 ## Active Directory
 - Active Directory Basics
 - Breaching Active Directory
