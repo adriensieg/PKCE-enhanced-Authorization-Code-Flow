@@ -1,5 +1,8 @@
 ## OAuth 2.0 with PKCE Flow:
 
+- Azure Entra ID: Public vs. Private / Confidential Client
+- Server flow vs. Implicit flow
+
 ## Requirements before starting: 
 ### Public vs. Private App
 
@@ -535,6 +538,7 @@ You redirect to Microsoft logout, but you may also want to revoke refresh tokens
 Timezones / datetime usage.
 
 You use naive datetime with utcnow() and fromisoformat(); being explicit about timezone (aware datetimes) avoids subtle bugs.
+
 
 ## Bibliography
 - https://developer.reachfive.com/docs/flows/authorization-code-pkce.html
