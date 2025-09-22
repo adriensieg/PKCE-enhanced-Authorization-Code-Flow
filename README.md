@@ -1,7 +1,10 @@
 ## OAuth 2.0 with PKCE Flow:
 
-- Azure Entra ID: Public vs. Private / Confidential Client
-- Server flow vs. Implicit flow
+How to generate a secret? 
+
+```python
+python3 -c "import secrets; print(f'SECRET_KEY={secrets.token_urlsafe(32)}')"
+```
 
 ## Requirements before starting: 
 ### Public vs. Private App
