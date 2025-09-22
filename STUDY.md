@@ -34,6 +34,14 @@
 - Active Directory Basics
 - Breaching Active Directory
 - Enumerating Active Directory
+  - Reconnaissance
+  - Initial Exploitation
+  - Establish Foothold
+  - Escalate Privileges
+  - Internal Reconnaissance
+  - Lateral Movement
+  - Maintain Presence
+  - Complete Mission
 - Lateral Movement and Pivoting
 - Exploiting Active Directory
 - Persisting Active Directory
