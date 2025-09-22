@@ -1,0 +1,13 @@
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+jinja2==3.1.2
+python-jose[cryptography]==3.3.0
+requests==2.31.0
+authlib==1.2.1
+itsdangerous==2.1.2
+slowapi==0.1.9
+python-dotenv==1.0.0
+cryptography==41.0.7
+aiofiles==23.2.1
+httpx
