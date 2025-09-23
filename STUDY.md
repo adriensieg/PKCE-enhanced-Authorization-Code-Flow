@@ -27,6 +27,8 @@
 - Introspection
 - Resource indicators
 
+- https://adriensieg.substack.com/p/cracking-the-code-can-you-solve-the-b1d
+
 - Traditional Cookie-Based Auth
 - Modern Token Based Auth
 
