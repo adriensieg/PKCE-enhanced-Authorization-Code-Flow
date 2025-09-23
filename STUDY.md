@@ -1,7 +1,13 @@
 ## More concepts: 
 
-- Tokens vs. Code
-- Server flow vs. Implicit flow
+- **Tokens** vs. **Code**
+- **ID tokens** vs **Access Tokens**
+  - https://www.linkedin.com/pulse/id-tokens-vs-access-pablo-cibraro/
+  - An ID token contains the identity information about the authenticated users, and it is intended to be consumed by the front-end application.
+  - An access token represents a ticket with permission to consume an API or our protected resources.
+- **Server flow** vs. **Implicit flow**
+- Introspection endpoints
+- Multi-tenants vs single tenants
 - Bearer token
 - Token types:
   - **Access tokens**: Lets clients call Google Cloud APIs
