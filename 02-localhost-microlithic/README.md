@@ -1,5 +1,4 @@
 
-- error.html
 - Secret hardcoded
 - new features - still protected?
 - documentation of all files and explanations
@@ -38,17 +37,6 @@ microlithic/
 ```
 
 ## How to Add New Features
-Now that your authentication is modular, adding new features is simple. In app.py, after the existing home route, you can add:
+Now that your authentication is **modular**, **adding new features is simple**. 
 
-```python
-@app.get("/my-new-feature")
-async def my_new_feature(request: Request, user: Dict[str, Any] = Depends(get_current_user)):
-    """Your new protected feature."""
-    # user is guaranteed to be authenticated
-    return {"message": f"Hello {user['name']}", "feature": "new"}
 
-@app.get("/public-feature")
-async def public_feature(request: Request):
-    """Public feature - no authentication required."""
-    return {"message": "This is public"}
-```
