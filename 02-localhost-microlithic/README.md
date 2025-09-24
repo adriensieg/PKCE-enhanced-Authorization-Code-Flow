@@ -1,4 +1,8 @@
 
+- error.html
+- new features - still protected?
+- documentation of all files and explanations
+
 ## Project Directory
 
 ```
