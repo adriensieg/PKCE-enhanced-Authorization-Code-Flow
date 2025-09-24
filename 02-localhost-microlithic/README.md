@@ -1,5 +1,6 @@
 
 - error.html
+- Secret hardcoded
 - new features - still protected?
 - documentation of all files and explanations
 
