@@ -1,5 +1,25 @@
+# OAuth using OIDC Authentication with PKCE for a Public and Private Client
 
-# Considerations before starting: 
+
+                                                 +-------------------+
+                                                 |   Authz Server    |
+       +--------+                                | +---------------+ |
+       |        |--(A)- Authorization Request ---->|               | |
+       |        |       + t(code_verifier), t_m  | | Authorization | |
+       |        |                                | |    Endpoint   | |
+       |        |<-(B)---- Authorization Code -----|               | |
+       |        |                                | +---------------+ |
+       | Client |                                |                   |
+       |        |                                | +---------------+ |
+       |        |--(C)-- Access Token Request ---->|               | |
+       |        |          + code_verifier       | |    Token      | |
+       |        |                                | |   Endpoint    | |
+       |        |<-(D)------ Access Token ---------|               | |
+       +--------+                                | +---------------+ |
+                                                 +-------------------+
+
+
+## Considerations before starting: 
 - [**What you need from Azure Entra ID?**](#0-what-you-need-from-azure-entra-id)
 - [**What functionality does this app offer?**](#1-what-functionality-does-this-app-offer)
     - [Authentication & Authorization](#a-authentication--authorization)
