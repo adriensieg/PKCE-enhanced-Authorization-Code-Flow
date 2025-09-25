@@ -1,6 +1,5 @@
 # OAuth using OIDC Authentication with PKCE for a Public and Private Client
 
-
                                                  +-------------------+
                                                  |   Authz Server    |
        +--------+                                | +---------------+ |
@@ -18,6 +17,8 @@
        +--------+                                | +---------------+ |
                                                  +-------------------+
 
+*Request along with the transformation method "t_m"*
+https://datatracker.ietf.org/doc/html/rfc7636
 
 ## Considerations before starting: 
 - [**What you need from Azure Entra ID?**](#0-what-you-need-from-azure-entra-id)
