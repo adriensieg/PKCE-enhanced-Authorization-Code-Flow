@@ -1,17 +1,63 @@
 
-### Public Client vs. Private Client
+# Considerations before starting: 
+- **What you need from Azure Entra ID?**
+- **Public Client** vs. **Private Client**
+- **Multi-tenant** vs. **Single-tenant**
+- **Access tokens** vs "**ID tokens**
+- **implicit flows** vs. **hybrid flows**
+- **Platforms** & **OAuth flow restrictions**
+    - **SPA**: Must use browser-based CORS requests (JavaScript fetch/XMLHttpRequest)
+    - **Mobile/Desktop** (PublicClient): Allows server-side token exchange with PKCE
+    - **Web**: Requires client authentication (secret/certificate)
+ 
+# 0. What you need from Azure Entra ID?
 
-### Multi-tenant vs. Single-tenant
+- **Public Client (PKCE only)**
+  - `Tenant ID` (or domain)
+  - `Client ID`
+  - `Redirect URI(s)` (registered as public client)
+  - `Scopes` (openid profile offline_access + APIs)
+  - `Code challenge/verifier` (runtime-generated, not from Entra)
+
+👉 **No client secret**.
+
+- **Confidential Client (Secret or Certificate)**
+  - `Tenant ID` (or domain)
+  - `Client ID`
+  - `Redirect URI(s)`
+  - `Scopes`
+  - `Client secret` or `certificate` (securely stored)
+  - (Optional) `PKCE` support - `Code challenge/verifier`
+
+👉 **PKCE + secret/cert = strongest protection.**
+
+# 1. Public vs. Private App
+
+- **Public Client**
+  - An application that **cannot safely store secrets** (e.g., mobile apps, SPAs, CLI tools).
+  - Uses **PKCE to protect against code interception**.
+  - Does **not authenticate** with a **client secret**.
+  - **No secure server-side environment**
+    - In public clients, all code executes **on devices** you don’t control.
+    - Unlike a backend server, there’s **no trusted**, **isolated runtime** to protect the secret.
+
+- **Confidential Client (Private)**
+  - An application that can **safely store secrets** (e.g., server-side apps, daemons).
+  - Uses **client secret** or **certificate for authentication**.
+  - Can also use **PKCE as an additional security layer**.
+
+| Aspect                 | Public Client (PKCE only)           | Confidential Client (Secret/Cert + PKCE optional) |
+| ---------------------- | ----------------------------------- | ------------------------------------------------- |
+| **Secret storage**     | No secret (unsafe environment)      | Secret or certificate securely stored             |
+| **PKCE usage**         | Required                            | Optional (but recommended)                        |
+| **Security guarantee** | Proof-of-possession (via PKCE) only | Secret-based authentication + optional PKCE       |
+| **Use cases**          | Mobile apps, SPAs, CLI tools        | Server-side apps, web APIs, background services   |
+
 
 ### Access tokens (used for implicit flows) vs. ID tokens (used for implicit and hybrid flows)
 
-### Configure Platforms
 
-Microsoft has different OAuth flow restrictions:
 
-SPA: Must use browser-based CORS requests (JavaScript fetch/XMLHttpRequest)
-Mobile/Desktop (PublicClient): Allows server-side token exchange with PKCE
-Web: Requires client authentication (secret/certificate)
 
 
 # Public Client
