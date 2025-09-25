@@ -1,6 +1,6 @@
 
 # Considerations before starting: 
-- [**What you need from Azure Entra ID?**](#example)
+- [**What you need from Azure Entra ID?**](#0-what-you-need-from-azure-entra-id)
 - **Public Client** vs. **Private Client**
 - **Multi-tenant** vs. **Single-tenant**
 - **Access tokens** vs "**ID tokens**
