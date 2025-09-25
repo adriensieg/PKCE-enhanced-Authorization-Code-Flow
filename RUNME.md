@@ -1,14 +1,16 @@
 
 # Considerations before starting: 
 - [**What you need from Azure Entra ID?**](#0-what-you-need-from-azure-entra-id)
-- **Public Client** vs. **Private Client**
-- **Multi-tenant** vs. **Single-tenant**
-- **Access tokens** vs "**ID tokens**
-- **implicit flows** vs. **hybrid flows**
-- **Platforms** & **OAuth flow restrictions**
+- [**Public Client** vs. **Private Client**](#1-public-vs-private-app)
+- [**Multi-tenant** vs. **Single-tenant**](#0-what-you-need-from-azure-entra-id)
+- [**Access tokens** vs "**ID tokens**](#0-what-you-need-from-azure-entra-id)
+- [**implicit flows** vs. **hybrid flows**](#0-what-you-need-from-azure-entra-id)
+- [**Platforms** & **OAuth flow restrictions**](#0-what-you-need-from-azure-entra-id)
     - **SPA**: Must use browser-based CORS requests (JavaScript fetch/XMLHttpRequest)
     - **Mobile/Desktop** (PublicClient): Allows server-side token exchange with PKCE
     - **Web**: Requires client authentication (secret/certificate)
+ - [**How to configure?**]
+ - [Code vs. Tokens]
  
 # 0. What you need from Azure Entra ID?
 
@@ -54,7 +56,15 @@
 | **Use cases**          | Mobile apps, SPAs, CLI tools        | Server-side apps, web APIs, background services   |
 
 
-### Access tokens (used for implicit flows) vs. ID tokens (used for implicit and hybrid flows)
+# 2. Tenant in Azure Entra ID?
+
+- A tenant is an instance of Microsoft Entra ID that an organization receives when it signs up for Microsoft cloud services (e.g., Microsoft 365, Azure, Dynamics 365).
+- It represents an organization and contains users, groups, applications, and subscriptions.
+
+
+
+
+Access tokens (used for implicit flows) vs. ID tokens (used for implicit and hybrid flows)
 
 
 
