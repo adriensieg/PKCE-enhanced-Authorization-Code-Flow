@@ -31,6 +31,7 @@
      - [Refresh Token](#9-access-token)
      - [Session Cookie](#10-refresh-token-format)
      - [JWKS](#12-jwks-json-web-key-set--public-signing-keys)
+ - [**How to add a new features?**](#11)
  
 # 0. What you need from Azure Entra ID?
 - **Public Client (PKCE only)**
@@ -481,9 +482,29 @@ Each exists because it protects against different attackers at different steps:
   - Your ticket also requires a personal PIN you set when buying. Even if someone steals the ticket on the way, they can’t use it without your PIN.
 - **`nonce`** → **protects the ID token itself (identity replay).**
   - On the ticket itself is a one-time hologram code that proves it’s fresh for this concert only, not reused from last week’s show.
+ 
+# 10. Layout of this project
 
 
 
+# 11. How to add a new features?
+
+Let's say we want to add **a simple calculator feature** to our existing application
+
+For the best organization possible - we have to create **a separate routes directory for application-specific features** `app_routes` (not authentication-related):
+
+```
+microlithic/
+├── secure_auth/         # Authentication library
+│   └── routes/          # Auth-related routes
+│       ├── auth.py
+│       └── debug.py
+├── **app_routes/**         # Application features
+│   ├── __init__.py
+│   ├── **calculator.py**
+│   └── other_features.py
+└── app.py
+```
 
 
 
