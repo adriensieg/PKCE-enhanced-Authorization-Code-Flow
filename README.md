@@ -9,7 +9,7 @@
     - [**Additional Application Security**](#e-additional-application-security)
 - [**Public Client** vs. **Private Client**](#2-public-vs-private-app)
 - [**Multi-tenant** vs. **Single-tenant**](#3-tenant-in-azure-entra-id)
-- [**Access tokens** vs "**ID tokens**](#4)
+- [**Access tokens** vs **ID tokens**](#4)
 - [**Implicit flows** vs. **Hybrid flows**](#5)
 - [**Platforms** & **OAuth flow restrictions**](#6)
     - **SPA**: Must use browser-based CORS requests (JavaScript fetch/XMLHttpRequest)
