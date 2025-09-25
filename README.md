@@ -199,17 +199,10 @@ Since our FastAPI app makes server-side HTTP requests (not browser CORS requests
 ### 4. Verify API Permissions
 
 In API permissions, ensure you have:
-openid
-profile
-email
-offline_access
-
-
-
-
-
-
-
+- `openid`
+- `profile`
+- `email`
+- `offline_access`
 
 0. Initialization
  - **Tenant ID (or domain)** - Used in our authority URLs:
@@ -553,7 +546,7 @@ Let's say we want to add **a simple calculator feature** to our existing applica
 
 For the best organization possible - we have to create **a separate routes directory for application-specific features** `app_routes` (not authentication-related):
 
-- Step 0: 
+- **Step 0**: Create the **new directory**
 ```
 microlithic/
 ├── secure_auth/         # Authentication library
@@ -567,7 +560,7 @@ microlithic/
 └── app.py
 ```
 
-- Step 1: Create `app_routes/init.py`
+- **Step 1**: Create `app_routes/init.py`
 
 ```python
 """Application-specific feature routes."""
@@ -577,85 +570,14 @@ from .calculator import router as calculator_router
 __all__ = ['calculator_router']
 ```
 
-- Step 2: Create `app_routes/calculator.py`
-- Step 3: Optional - Add Link to Calculator in index.html
-- Step 4: In app.py, change the import:
+- **Step 2**: Create `app_routes/calculator.py`
+- **Step 3**: Optional - Add Link to Calculator in `index.html`
+- **Step 4**: In `app.py`, change the import:
 
 ```
 from secure_auth.routes import auth_router, debug_router
 from app_routes import calculator_router  # New application routes
 ```
-# Add these imports at the top of app.py (if not already there)
-from fastapi import Form
-from typing import Optional
-
-# Add this route after the home() route in app.py
-
-@app.get("/calculator", response_class=HTMLResponse)
-@limiter.limit("100 per minute")
-async def calculator_get(request: Request, user: Dict[str, Any] = Depends(get_current_user)):
-    """Calculator page - GET request (shows the form)."""
-    return templates.TemplateResponse(
-        "calculator.html", 
-        {
-            "request": request, 
-            "user": user,
-            "result": None,
-            "error": None
-        }
-    )
-
-
-@app.post("/calculator", response_class=HTMLResponse)
-@limiter.limit("100 per minute")
-async def calculator_post(
-    request: Request,
-    num1: float = Form(...),
-    num2: float = Form(...),
-    operation: str = Form(...),
-    user: Dict[str, Any] = Depends(get_current_user)
-):
-    """Calculator page - POST request (performs calculation)."""
-    result = None
-    error = None
-    
-    try:
-        # Server-side computation
-        if operation == "add":
-            result = num1 + num2
-        elif operation == "subtract":
-            result = num1 - num2
-        elif operation == "multiply":
-            result = num1 * num2
-        elif operation == "divide":
-            if num2 == 0:
-                error = "Cannot divide by zero!"
-            else:
-                result = num1 / num2
-        else:
-            error = "Invalid operation selected"
-        
-        # Log the calculation
-        logger.info(f"User {user['name']} performed calculation: {num1} {operation} {num2} = {result}")
-        
-    except Exception as e:
-        error = f"Calculation error: {str(e)}"
-        logger.error(f"Calculation error for user {user['name']}: {e}")
-    
-    return templates.TemplateResponse(
-        "calculator.html", 
-        {
-            "request": request,
-            "user": user,
-            "num1": num1,
-            "num2": num2,
-            "operation": operation,
-            "result": result,
-            "error": error
-        }
-    )
-```
-
 
 
 
