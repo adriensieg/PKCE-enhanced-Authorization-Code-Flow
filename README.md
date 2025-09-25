@@ -19,10 +19,20 @@
      - **Private/Confidential server-side client**
      - **Public server-side client**
  - [**Code vs. Tokens**](#8)
- - [**Dictionary of Codes and Tokens**](#8)
+ - [**Dictionary of Codes and Tokens**](#9-dictionary-of-codes-and-tokens)
+     - [code_verifier](#1-code_verifier)
+     - [code_challenge](#2-code_challenge-s256)
+     - [state](#3-state)
+     - [nonce](#4-nonce)
+     - [Authorization Code](#5-authorization-code-code--returned-by-authorization-server)
+     - [Access Token](#6-access-token--returned-by-token-endpoint)
+     - [Refresh Token](#7-refresh-token--included-in-token-response)
+     - [ID Token](#8-id-token-id_token--openid-connect-identity-token)
+     - [Refresh Token](#9-access-token)
+     - [Session Cookie](#10-refresh-token-format)
+     - [JWKS](#12-jwks-json-web-key-set--public-signing-keys)
  
 # 0. What you need from Azure Entra ID?
-
 - **Public Client (PKCE only)**
   - `Tenant ID` (or domain)
   - `Client ID`
