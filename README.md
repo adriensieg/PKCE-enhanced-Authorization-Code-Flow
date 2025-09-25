@@ -195,14 +195,15 @@ Multi-Tenant: Like a public restaurant — open to anyone, but each customer pay
 
 ## A. A PUBLIC server-side Client
 
-# 1. Azure AD Configuration Changes Required
-### 1. Enable Public Client Flows
+#### Azure AD Configuration Changes Required
+
+1. Enable Public Client Flows
 - In our Azure AD app registration:
 - Go to Authentication → Advanced settings
 - Set "Allow public client flows" to Yes
 This is the crucial setting that tells Azure AD this app can use PKCE without a client secret
 
-### 2. Verify Platform Configuration
+2. Verify Platform Configuration
 - In Authentication → Platform configurations
 - Make sure you have a Mobile/Desktop platform configured
 - Add redirect URI: `http://localhost:8080/auth/callback`
@@ -213,11 +214,11 @@ This means Microsoft expects SPA applications to make token requests from the br
 Our FastAPI app is making a server-to-server POST request, which Microsoft blocks for SPA platform types.
 Since our FastAPI app makes server-side HTTP requests (not browser CORS requests), you need the Mobile/Desktop platform type, which allows public clients to make server-side token requests with PKCE protection.
 
-### 3. Remove Any Client Secrets (Optional)
+3. Remove Any Client Secrets (Optional)
 - Go to Certificates & secrets
 - You can delete any existing client secrets since they won't be used
 
-### 4. Verify API Permissions
+4. Verify API Permissions
 
 In API permissions, ensure you have:
 - `openid`
