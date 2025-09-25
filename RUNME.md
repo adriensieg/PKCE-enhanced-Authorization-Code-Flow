@@ -2,15 +2,15 @@
 # Considerations before starting: 
 - [**What you need from Azure Entra ID?**](#0-what-you-need-from-azure-entra-id)
 - [**Public Client** vs. **Private Client**](#1-public-vs-private-app)
-- [**Multi-tenant** vs. **Single-tenant**](#0-what-you-need-from-azure-entra-id)
-- [**Access tokens** vs "**ID tokens**](#0-what-you-need-from-azure-entra-id)
-- [**implicit flows** vs. **hybrid flows**](#0-what-you-need-from-azure-entra-id)
-- [**Platforms** & **OAuth flow restrictions**](#0-what-you-need-from-azure-entra-id)
+- [**Multi-tenant** vs. **Single-tenant**](#2-tenant-in-azure-entra-id)
+- [**Access tokens** vs "**ID tokens**]()
+- [**Implicit flows** vs. **Hybrid flows**]()
+- [**Platforms** & **OAuth flow restrictions**]()
     - **SPA**: Must use browser-based CORS requests (JavaScript fetch/XMLHttpRequest)
     - **Mobile/Desktop** (PublicClient): Allows server-side token exchange with PKCE
     - **Web**: Requires client authentication (secret/certificate)
  - [**How to configure?**]
- - [Code vs. Tokens]
+ - [**Code vs. Tokens**]
  
 # 0. What you need from Azure Entra ID?
 
@@ -62,9 +62,9 @@
 - It represents an organization and contains users, groups, applications, and subscriptions.
 
 
+# 3. Access tokens vs. ID tokens
 
-
-Access tokens (used for implicit flows) vs. ID tokens (used for implicit and hybrid flows)
+- Access tokens (used for implicit flows) vs. ID tokens (used for implicit and hybrid flows)
 
 
 
