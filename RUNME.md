@@ -1,6 +1,6 @@
 
 # Considerations before starting: 
-- **What you need from Azure Entra ID?**
+- [**What you need from Azure Entra ID?**](#example)
 - **Public Client** vs. **Private Client**
 - **Multi-tenant** vs. **Single-tenant**
 - **Access tokens** vs "**ID tokens**
@@ -33,18 +33,18 @@
 
 # 1. Public vs. Private App
 
-- **Public Client**
-  - An application that **cannot safely store secrets** (e.g., mobile apps, SPAs, CLI tools).
-  - Uses **PKCE to protect against code interception**.
-  - Does **not authenticate** with a **client secret**.
-  - **No secure server-side environment**
-    - In public clients, all code executes **on devices** you don’t control.
-    - Unlike a backend server, there’s **no trusted**, **isolated runtime** to protect the secret.
+### **Public Client**
+- An application that **cannot safely store secrets** (e.g., mobile apps, SPAs, CLI tools).
+- Uses **PKCE to protect against code interception**.
+- Does **not authenticate** with a **client secret**.
+- **No secure server-side environment**
+- In public clients, all code executes **on devices** you don’t control.
+- Unlike a backend server, there’s **no trusted**, **isolated runtime** to protect the secret.
 
-- **Confidential Client (Private)**
-  - An application that can **safely store secrets** (e.g., server-side apps, daemons).
-  - Uses **client secret** or **certificate for authentication**.
-  - Can also use **PKCE as an additional security layer**.
+### **Confidential Client (Private)**
+- An application that can **safely store secrets** (e.g., server-side apps, daemons).
+- Uses **client secret** or **certificate for authentication**.
+- Can also use **PKCE as an additional security layer**.
 
 | Aspect                 | Public Client (PKCE only)           | Confidential Client (Secret/Cert + PKCE optional) |
 | ---------------------- | ----------------------------------- | ------------------------------------------------- |
@@ -60,7 +60,7 @@
 
 
 
-# Public Client
+# How to configure? 
 
 # 1. Azure AD Configuration Changes Required
 ### 1. Enable Public Client Flows
