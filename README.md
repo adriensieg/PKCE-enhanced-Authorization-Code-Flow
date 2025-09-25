@@ -131,6 +131,36 @@
 - A tenant is an instance of Microsoft Entra ID that an organization receives when it signs up for Microsoft cloud services (e.g., Microsoft 365, Azure, Dynamics 365).
 - It represents an organization and contains users, groups, applications, and subscriptions.
 
+Single-Tenant
+
+Definition: The application is registered and available only to users (and service principals) in one Azure AD tenant (the publisher’s tenant).
+Used when an app is meant only for internal use within one organization.
+
+Authentication and authorization happen only against the organization’s tenant.
+Real-life Situations:
+
+A company builds an HR management app just for its own employees.
+
+A corporate intranet or dashboard.
+- **Multi-Tenant**: The application is registered once in Azure, but can be used by users from multiple Azure AD tenants (organizations).
+- Designed for SaaS apps and services that need to authenticate users from different organizations.
+- A SaaS company builds a project management tool where each customer (different company) signs in with their own Microsoft 365 accounts.
+
+A third-party CRM app that different businesses subscribe to.
+
+Real-world Analogy
+
+Single-Tenant: Like a company cafeteria — only employees of that company can eat there.
+
+Multi-Tenant: Like a public restaurant — open to anyone, but each customer pays for their own meal and gets their own table (isolation).
+
+| Aspect             | Single-Tenant                          | Multi-Tenant                                                                      |
+| ------------------ | -------------------------------------- | --------------------------------------------------------------------------------- |
+| **Audience**       | One organization (internal users only) | Multiple organizations (external tenants)                                         |
+| **Authentication** | Only users in the publishing tenant    | Users from any Azure AD tenant (with consent)                                     |
+| **Deployment**     | Internal LOB applications              | SaaS applications                                                                 |
+| **Complexity**     | Simpler to manage                      | Requires handling consent, directory isolation, possibly multi-tenant data models |
+| **Security**       | More controlled (single org)           | Broader scope → needs extra governance (conditional access, tenant restrictions)  |
 
 # 4. Access tokens vs. ID tokens
 
