@@ -9,8 +9,8 @@
     - **SPA**: Must use browser-based CORS requests (JavaScript fetch/XMLHttpRequest)
     - **Mobile/Desktop** (PublicClient): Allows server-side token exchange with PKCE
     - **Web**: Requires client authentication (secret/certificate)
- - [**How to configure?**]
- - [**Code vs. Tokens**]
+ - [**How to configure?**]()
+ - [**Code vs. Tokens**]()
  
 # 0. What you need from Azure Entra ID?
 
