@@ -30,6 +30,7 @@
     - [Additional Application Security](#e-additional-application-security)
 - [**Public Client** vs. **Private Client**](#2-public-vs-private-app)
 - [**Multi-tenant** vs. **Single-tenant**](#3-tenant-in-azure-entra-id)
+- [**Code vs. Tokens**](#8)
 - [**Access tokens** vs **ID tokens**](#4)
 - [**Implicit flows** vs. **Hybrid flows**](#5)
 - [**Platforms** & **OAuth flow restrictions**](#6)
@@ -39,7 +40,7 @@
  - [**How to configure?**](#7)
      - **Private/Confidential server-side client**
      - **Public server-side client**
- - [**Code vs. Tokens**](#8)
+ - Introspection endpoints
  - [**Dictionary of Codes and Tokens**](#9-dictionary-of-codes-and-tokens)
      - [code_verifier](#1-code_verifier)
      - [code_challenge](#2-code_challenge-s256)
@@ -53,6 +54,11 @@
      - [Session Cookie](#10-refresh-token-format)
      - [JWKS](#12-jwks-json-web-key-set--public-signing-keys)
  - [**How to add a new features?**](#11)
+ - **Bearer token**
+ - **Traditional Cookie-Based Auth** vs **Modern Token Based Auth**
+   - **Cookie-based auth** relies on **server-side sessions** and cookies handled by the browser.
+   - **Token-based auth** relies on **stateless tokens (JWTs)** that the client must attach explicitly to requests.
+- Should JWT Token be stored in a cookie, header or body?
  
 # 0. What you need from Azure Entra ID?
 - **Public Client (PKCE only)**
