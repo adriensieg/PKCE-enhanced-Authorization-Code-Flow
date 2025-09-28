@@ -608,8 +608,39 @@ from app_routes import calculator_router  # New application routes
 ```
 
 
+# Traditional Cookie-Based Auth vs Modern Token Based Auth
 
+<img width="950" height="540" alt="image" src="https://github.com/user-attachments/assets/f9a0a840-0e35-4a79-bf9f-b30b1b3eb107" />
 
+<img width="1600" height="1103" alt="image" src="https://github.com/user-attachments/assets/3d009a97-4f1d-4df7-b64e-5a046aeebb70" />
+
+<img width="757" height="634" alt="image" src="https://github.com/user-attachments/assets/78eb47e1-7ef2-44b8-a4fc-23f67d9394cd" />
+
+## Modern Token-Based Auth (Right side)
+
+(Usually using JWT - JSON Web Token)
+
+Login:
+
+The browser sends POST /authenticate with username and password.
+
+The server verifies credentials.
+
+Token Issued:
+
+The server generates a JWT (contains user info + expiry, signed cryptographically).
+
+It responds with { token: "....JWT..." }.
+
+The browser must store this token (in localStorage, sessionStorage, or memory).
+
+Subsequent Requests:
+
+The browser sends the token explicitly in the Authorization: Bearer ...JWT... header.
+
+The server validates the token (checks signature & expiration).
+
+No need to look up a session in memory.
 
 
 
