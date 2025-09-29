@@ -607,41 +607,72 @@ __all__ = ['calculator_router']
 from secure_auth.routes import auth_router, debug_router
 from app_routes import calculator_router  # New application routes
 ```
+# Bearer token
 
+<img width="50%" height="50%" alt="image" src="https://github.com/user-attachments/assets/a5fbaa20-2350-4f2a-99a4-b7c8e221ccfe" />
 
-# Traditional Cookie-Based Auth vs Modern Token Based Auth
+# Cookie-Based Auth vs. Token Based Auth
 
-<img width="950" height="540" alt="image" src="https://github.com/user-attachments/assets/f9a0a840-0e35-4a79-bf9f-b30b1b3eb107" />
+**HTTP is stateless**, even if you authenticate with one request, the **server essentially "forgets" that authentication with subsequent requests**. Therefore, you need to **supply the token/cookie on every request** for authentication by the server. The frontend stores the **token** or **cookie** and uses it to make subsequent requests to the server until the cookie or token expires.
 
-<img width="1600" height="1103" alt="image" src="https://github.com/user-attachments/assets/3d009a97-4f1d-4df7-b64e-5a046aeebb70" />
+- **Session cookies** = pointer → server holds state.
+- **JWT cookies** = self-contained package → server validates signature only.
+- The trade-off is control (stateful) vs scalability (stateless).
+
+## A. Cookie-Based Auth
+- **Client (browser)**:
+  - Holds only the session identifier (a random string or token, often called sessionID) inside a cookie.
+  - Contains only the session ID (not the full session data). Client stores the pointer (ID).
+  - This lets the browser "prove" to the server who it is without re-sending credentials (like username/password) every time.
+  - Think of it as a "claim check" or "ticket stub": the client doesn’t carry all the data, just a reference.
+
+- **Server**:
+  - Maintains the actual session data (user identity, roles, permissions, last activity, etc.) associated with that session ID.
+  - Server stores the state (full session info).
+  - This avoids exposing sensitive details directly to the client.
+  - The server remains in control of session validity (can revoke it at logout, idle timeout, forced expiration, etc.).
+  - The session ID (from the browser) is a key to a lookup table (e.g., Redis, SQL row, memory hash map).
+  - The server checks:
+    - Does this sessionID exist?
+    - Has it expired or been revoked?
+    - What user/session data is linked to it?
+
+#### The flow
+1. User **logs in** → server generates a `sessionID` (random, unpredictable string).
+2. Server **saves session state** in a **session store** (in-memory DB like Redis, or DB table, or file-based storage). Example:
+
+```
+sessionID: "abc123xyz"
+{
+  userId: 42,
+  roles: ["admin"],
+  expiresAt: "2025-09-29T12:00:00Z"
+}
+```
+3. Server sends `Set-Cookie` header to **browser**:
+
+```
+Set-Cookie: sessionID=abc123xyz; HttpOnly; Secure; SameSite=Strict
+```
+
+4. Browser stores cookie **locally**.
+5. Browser makes another request → automatically includes the cookie:
+```
+GET /dashboard HTTP/1.1
+Cookie: sessionID=abc123xyz
+```
+
+6. Server **receives** request, extracts `sessionID` from the cookie, and **looks it up in the session store**.
+7. If valid:
+  - Server **restores the session context** (userId=42, role=admin, etc.).
+  - Proceeds with **authorization checks** and executes the request.
+
+8. If invalid/expired/not found:
+  - Server rejects with 401 Unauthorized or redirects to login.
+   
+## B. Cookie-Based Auth
 
 <img width="757" height="634" alt="image" src="https://github.com/user-attachments/assets/78eb47e1-7ef2-44b8-a4fc-23f67d9394cd" />
-
-## Modern Token-Based Auth (Right side)
-
-(Usually using JWT - JSON Web Token)
-
-Login:
-
-The browser sends POST /authenticate with username and password.
-
-The server verifies credentials.
-
-Token Issued:
-
-The server generates a JWT (contains user info + expiry, signed cryptographically).
-
-It responds with { token: "....JWT..." }.
-
-The browser must store this token (in localStorage, sessionStorage, or memory).
-
-Subsequent Requests:
-
-The browser sends the token explicitly in the Authorization: Bearer ...JWT... header.
-
-The server validates the token (checks signature & expiration).
-
-No need to look up a session in memory.
 
 
 # `Cookie` vs. `Session` vs. `Local Storage`
