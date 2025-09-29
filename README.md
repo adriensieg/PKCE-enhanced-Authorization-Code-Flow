@@ -21,27 +21,27 @@
 - https://datatracker.ietf.org/doc/html/rfc7636
 
 ## Considerations before starting: 
-- [**What you need from Azure Entra ID?**](#0-what-you-need-from-azure-entra-id)
-- [**What functionality does this app offer?**](#1-what-functionality-does-this-app-offer)
+- [**What you need from Azure Entra ID?**]()
+- [**What functionality does this app offer?**]()
     - [Authentication & Authorization](#a-authentication--authorization)
     - [Session Security](#b-session-security)
     - [Transport & Browser Security Headers](#c-transport--browser-security-headers)
     - [Rate Limiting & DoS Protection](#d-rate-limiting--dos-protection)
     - [Additional Application Security](#e-additional-application-security)
-- [**Public Client** vs. **Private Client**](#2-public-vs-private-app)
-- [**Multi-tenant** vs. **Single-tenant**](#3-tenant-in-azure-entra-id)
-- [**Code vs. Tokens**](#8)
-- [**Access tokens** vs **ID tokens**](#4)
-- [**Implicit flows** vs. **Hybrid flows**](#5)
-- [**Platforms** & **OAuth flow restrictions**](#6)
-    - **SPA**: Must use browser-based CORS requests (JavaScript fetch/XMLHttpRequest)
-    - **Mobile/Desktop** (PublicClient): Allows server-side token exchange with PKCE
-    - **Web**: Requires client authentication (secret/certificate)
- - [**How to configure?**](#7)
+- [**Public Client** vs. **Private Client**]()
+- [**Multi-tenant** vs. **Single-tenant**]()
+- [**Code vs. Tokens**]()
+- [**Access tokens** vs **ID tokens**]()
+- [**Implicit flows** vs. **Hybrid flows**]()
+- [**How to configure?**]()
      - **Private/Confidential server-side client**
      - **Public server-side client**
- - Introspection endpoints
- - [**Dictionary of Codes and Tokens**](#9-dictionary-of-codes-and-tokens)
+     - Platforms** & **OAuth flow restrictions
+       - **SPA**: Must use browser-based CORS requests (JavaScript fetch/XMLHttpRequest)
+       - **Mobile/Desktop** (PublicClient): Allows server-side token exchange with PKCE
+       - **Web**: Requires client authentication (secret/certificate)
+ - [**Introspection endpoints**]()
+ - [**Dictionary of Codes and Tokens**]()
      - [code_verifier](#1-code_verifier)
      - [code_challenge](#2-code_challenge-s256)
      - [state](#3-state)
@@ -53,8 +53,9 @@
      - [Refresh Token](#9-access-token)
      - [Session Cookie](#10-refresh-token-format)
      - [JWKS](#12-jwks-json-web-key-set--public-signing-keys)
- - [**How to add a new features?**](#11)
- - **Bearer token**
+ - [**Bearer token**]()
+ - [**Layout of this project**]
+ - [**How to add a new features?**]()
  - [**Traditional Cookie-Based Auth** vs **Modern Token Based Auth**](#cookie-based-auth-vs-token-based-auth)
    - **Cookie-based auth** relies on **server-side sessions** and cookies handled by the browser.
    - **Token-based auth** relies on **stateless tokens (JWTs)** that the client must attach explicitly to requests.
@@ -81,7 +82,7 @@
 
 👉 **PKCE + secret/cert = strongest protection.**
 
-# 1. What functionality does this app offer?
+# What functionality does this app offer?
 
 ### A. Authentication & Authorization
 - **Authorization Code Flow with PKCE (S256)**: Secure OAuth2 flow for SPAs/native apps that prevents stolen authorization codes from being reused.
@@ -131,7 +132,7 @@
 - **Custom error handlers (`404`/`500`)**: Prevents leaking stack traces or internals.
 - **Secure randomness (secrets, cryptographic entropy)**: Generates unpredictable values for tokens, states, and verifiers.
 
-# 2. Public vs. Private App
+# Public vs. Private App
 
 ### **Public Client**
 - An application that **cannot safely store secrets** (e.g., mobile apps, SPAs, CLI tools).
@@ -154,7 +155,7 @@
 | **Use cases**          | Mobile apps, SPAs, CLI tools        | Server-side apps, web APIs, background services   |
 
 
-# 3. Tenant in Azure Entra ID?
+# Tenant in Azure Entra ID?
 
 - A tenant is an instance of Microsoft Entra ID that an organization receives when it signs up for Microsoft cloud services (e.g., Microsoft 365, Azure, Dynamics 365).
 - It represents an organization and contains users, groups, applications, and subscriptions.
@@ -190,16 +191,15 @@ Multi-Tenant: Like a public restaurant — open to anyone, but each customer pay
 | **Complexity**     | Simpler to manage                      | Requires handling consent, directory isolation, possibly multi-tenant data models |
 | **Security**       | More controlled (single org)           | Broader scope → needs extra governance (conditional access, tenant restrictions)  |
 
-# 4. Access tokens vs. ID tokens
+# Code vs. Tokens
+
+# Access tokens vs. ID tokens
 
 - Access tokens (used for implicit flows) vs. ID tokens (used for implicit and hybrid flows)
 
+# `Implicit flows` vs. `Hybrid flows`
 
-
-
-
-# 7. How to configure?
-
+# How to configure?
 ## A. A PUBLIC server-side Client
 
 #### Azure AD Configuration Changes Required
@@ -355,7 +355,9 @@ sequenceDiagram
     end
 ```
 
-# 9. Dictionary of Codes and Tokens
+# Introspection endpoints
+
+# Dictionary of Codes and Tokens
 
 | Token/Code                    | Purpose                 | Real-life Value               | 
 | ----------------------------- | ----------------------- | ----------------------------- |
@@ -534,8 +536,10 @@ Each exists because it protects against different attackers at different steps:
   - Your ticket also requires a personal PIN you set when buying. Even if someone steals the ticket on the way, they can’t use it without your PIN.
 - **`nonce`** → **protects the ID token itself (identity replay).**
   - On the ticket itself is a one-time hologram code that proves it’s fresh for this concert only, not reused from last week’s show.
- 
-# 10. Layout of this project
+
+# Bearer token
+
+# Layout of this project
 
 ```
 secure_oauth_app/
