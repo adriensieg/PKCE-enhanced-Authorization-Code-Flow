@@ -58,7 +58,8 @@
  - **Traditional Cookie-Based Auth** vs **Modern Token Based Auth**
    - **Cookie-based auth** relies on **server-side sessions** and cookies handled by the browser.
    - **Token-based auth** relies on **stateless tokens (JWTs)** that the client must attach explicitly to requests.
-- Should JWT Token be stored in a cookie, header or body?
+- **LocalStorage** vs. **Session** vs. **Cookie**
+- **Should JWT Token be stored in a cookie, header or body?**
  
 # 0. What you need from Azure Entra ID?
 - **Public Client (PKCE only)**
@@ -643,7 +644,11 @@ The server validates the token (checks signature & expiration).
 No need to look up a session in memory.
 
 
+# `Cookie` vs. `Session` vs. `Local Storage`
 
+
+
+- https://jonathanmh.com/p/cookies-sessionstorage-localstorage-whats-the-difference/
 
 
 
