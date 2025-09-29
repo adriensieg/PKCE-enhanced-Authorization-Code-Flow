@@ -619,23 +619,25 @@ from app_routes import calculator_router  # New application routes
 - **JWT cookies** = self-contained package → server validates signature only.
 - The trade-off is control (stateful) vs scalability (stateless).
 
+Those are **not authentication files**, they are **==authorization ones==**. 
+
 ## A. Cookie-Based Auth
 - **Client (browser)**:
-  - Holds only the session identifier (a random string or token, often called sessionID) inside a cookie.
-  - Contains only the session ID (not the full session data). Client stores the pointer (ID).
-  - This lets the browser "prove" to the server who it is without re-sending credentials (like username/password) every time.
-  - Think of it as a "claim check" or "ticket stub": the client doesn’t carry all the data, just a reference.
+  - Holds only the **session identifier** (a random string or token, often called `sessionID`) inside a cookie.
+  - Contains only the `session ID` (**not the full session data**). Client stores the **pointer (ID)**.
+  - This **lets the browser "prove" to the server who it is without re-sending credentials** (like username/password) every time.
+  - Think of it as a **"claim check"** or **"ticket stub"**: the client doesn’t carry all the data, **just a reference**.
 
 - **Server**:
-  - Maintains the actual session data (user identity, roles, permissions, last activity, etc.) associated with that session ID.
-  - Server stores the state (full session info).
-  - This avoids exposing sensitive details directly to the client.
-  - The server remains in control of session validity (can revoke it at logout, idle timeout, forced expiration, etc.).
-  - The session ID (from the browser) is a key to a lookup table (e.g., Redis, SQL row, memory hash map).
+  - **Maintains the actual session data** (user identity, roles, permissions, last activity, etc.) associated with that session ID.
+  - Server stores the **state** (**full session info**).
+  - This avoids exposing **sensitive details** directly to the client.
+  - The server remains in **control of session validity** (can revoke it at logout, idle timeout, forced expiration, etc.).
+  - The **session ID** (from the browser) is a key to **a lookup table** (e.g., Redis, SQL row, memory hash map).
   - The server checks:
-    - Does this sessionID exist?
-    - Has it expired or been revoked?
-    - What user/session data is linked to it?
+    - Does this `sessionID` exist?
+    - Has it **expired or been revoked**?
+    - What **user/session** data is linked to it?
 
 #### The flow
 1. User **logs in** → server generates a `sessionID` (random, unpredictable string).
@@ -663,16 +665,67 @@ Cookie: sessionID=abc123xyz
 ```
 
 6. Server **receives** request, extracts `sessionID` from the cookie, and **looks it up in the session store**.
-7. If valid:
+7. If **valid**:
   - Server **restores the session context** (userId=42, role=admin, etc.).
   - Proceeds with **authorization checks** and executes the request.
 
-8. If invalid/expired/not found:
+8. If **invalid/expired/not found**:
   - Server rejects with 401 Unauthorized or redirects to login.
-   
-## B. Cookie-Based Auth
 
-<img width="757" height="634" alt="image" src="https://github.com/user-attachments/assets/78eb47e1-7ef2-44b8-a4fc-23f67d9394cd" />
+- **Why store on both client and server?** The client holds only an **ID (pointer)**. Server holds **authoritative user state** so it can **revoke/change privileges**, **expire sessions**, or **store large user info** without exposing it to the client. That separation protects **sensitive data** and **enables server control**.
+- **Is the cookie re-sent every call?** Yes — the browser automatically **sends the cookie with every matching HTTP request** (**same domain/path**, and subject to SameSite/CORS rules).
+- **Does backend compare?** Yes — backend uses the **cookie value as an index/key to look up the server-side session**. The server doesn’t trust the cookie content except **as a pointer**; server trust comes from the session store.
+
+<img width="660" height="330" alt="image" src="https://github.com/user-attachments/assets/24f923c5-b345-49b3-8a72-65310e0ace6b" />
+
+   
+## B. ** Token Based Auth
+
+- The server’s job is to **sign** and **verify**, **not to store session data**.
+
+### Where is the token stored?
+
+On the **client side**, after login the server **issues a token**. The client can store it in one of these places:
+1. ==**HTTP-only Cookie**==
+  - Stored in browser cookie storage.
+  - Safer against XSS (JavaScript can’t read it).
+  - Automatically sent with every request to the same domain.
+2. ==**LocalStorage / SessionStorage**==
+  - Accessible by JavaScript.
+  - Useful for SPAs (React, Angular, etc.).
+  - But vulnerable to XSS — attacker could steal the token if your site has a JS injection hole.
+3. ==**Memory**== (in a variable)
+  - Stored only in **JS runtime memory** (**lost on refresh**).
+    - The access token is kept only in RAM, e.g. in a JavaScript variable in your SPA.
+    - It is not persisted to localStorage, sessionStorage, or cookies.
+  - Most secure vs XSS, but least convenient.
+  - Often used with silent-refresh flows.
+
+It is generated by the server using a secret key, sent to and stored by the user in their local storage. 
+While receiving a token, the server **does not look up who the user is**, it simply **authorizes the user's requests** relying on the **validity of the token**.
+
+Like in the case of cookies, the user **sends this token to the server with every new request**, so that the server can **verify its signature and authorize the requests**. 
+
+👉 In practice: HTTP-only secure cookies are preferred when possible.
+
+| Criteria | Session Authentication Method | Token-Based Authentication Method |
+|----------|-------------------------------|-----------------------------------|
+| **1. Which side of the connection stores the authentication details** | Server | User |
+| **2. What the user sends to the server to have their requests authorized** | A cookie containing the session ID | The token itself (JWT or similar) |
+| **3. What the server does to authorize users' requests** | Looks up its session store (DB, Redis, memory) using the ID in the cookie | Verifies the token’s signature and decodes claims |
+| **4. Can the server admins perform security operations like logging users out, changing their details, etc.** | Yes, because the session is stored on the server | Harder, since the token is stored on the user's machine (revocation requires extra mechanisms) |
+| **5. Attacks the method may suffer from** | Man-in-the-middle (if not HTTPS), Cross-site request forgery (CSRF) | Man-in-the-middle, Token theft, Secret key compromise, Replay attacks |
+| **6. Preferred application** | User-to-server connections (e.g., web apps, monoliths) | Server-to-server connections (e.g., APIs, microservices) |
+| **7. Stateful vs. Stateless?** | **Stateful** — server must maintain session state | **Stateless** — server only needs the signing key, no per-user session store |
+| **8. Pros** | Easy to revoke sessions, centralized control, secure by default (data never leaves server) | Scales easily across servers, no session DB needed, useful for distributed/microservice systems |
+| **9. Cons** | Requires distributed session store for scaling, more server overhead | Harder to revoke/expire tokens early, token bloat, more risk if token is stolen |
+| **10. Use cases / When to use** | Traditional web apps with login sessions, systems needing fine-grained control over active sessions | APIs, mobile apps, microservices, SPAs (with careful storage) |
+| **11. Key vulnerabilities** | Session fixation, CSRF, session hijacking if ID leaked | Token theft (via XSS/localStorage), long-lived token misuse, compromised signing key |
+| **12. CSRF risk** | Higher (cookies auto-sent) — mitigate with `SameSite` and CSRF tokens | Lower if using `Authorization` header; but XSS risk if token stored in JS-accessible storage |
+| **13. Scaling** | Needs shared session store or sticky sessions | Easier to scale (signed tokens) — but revocation is more complex |
+| **14. Token size** | Small (session ID, within ~4KB cookie limit) | Can be large (JWT headers + claims) |
+| **15. Best for** | Server-rendered web apps, classic login flows | APIs, mobile apps, SPAs, microservices |
+| **16. Example header** | `Cookie: session=...` | `Authorization: Bearer <token>` |
 
 
 # `Cookie` vs. `Session` vs. `Local Storage`
