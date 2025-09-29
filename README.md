@@ -619,7 +619,7 @@ from app_routes import calculator_router  # New application routes
 - **JWT cookies** = self-contained package → server validates signature only.
 - The trade-off is control (stateful) vs scalability (stateless).
 
-Those are **not authentication files**, they are **==authorization ones==**. 
+Those are **not authentication files**, they are **<mark>authorization ones<mark>**. 
 
 ## A. Cookie-Based Auth
 - **Client (browser)**:
@@ -686,15 +686,15 @@ Cookie: sessionID=abc123xyz
 ### Where is the token stored?
 
 On the **client side**, after login the server **issues a token**. The client can store it in one of these places:
-1. ==**HTTP-only Cookie**==
+1. <mark>**HTTP-only Cookie**<mark>
   - Stored in browser cookie storage.
   - Safer against XSS (JavaScript can’t read it).
   - Automatically sent with every request to the same domain.
-2. ==**LocalStorage / SessionStorage**==
+2. <mark>**LocalStorage / SessionStorage**<mark>
   - Accessible by JavaScript.
   - Useful for SPAs (React, Angular, etc.).
   - But vulnerable to XSS — attacker could steal the token if your site has a JS injection hole.
-3. ==**Memory**== (in a variable)
+3. <mark>**Memory**<mark> (in a variable)
   - Stored only in **JS runtime memory** (**lost on refresh**).
     - The access token is kept only in RAM, e.g. in a JavaScript variable in your SPA.
     - It is not persisted to localStorage, sessionStorage, or cookies.
