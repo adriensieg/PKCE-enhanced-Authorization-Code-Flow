@@ -33,6 +33,7 @@
 - [**Code vs. Tokens**](#code-vs-tokens)
 - [**Access tokens** vs **ID tokens**]()
 - [**Implicit flows** vs. **Hybrid flows**]()
+- [**OIDC AuthZ with PKCE flow**]
 - [**How to configure?**]()
      - **Private/Confidential server-side client**
      - **Public server-side client**
@@ -160,7 +161,7 @@
 - A tenant is an instance of Microsoft Entra ID that an organization receives when it signs up for Microsoft cloud services (e.g., Microsoft 365, Azure, Dynamics 365).
 - It represents an organization and contains users, groups, applications, and subscriptions.
 
-Single-Tenant
+### Single-Tenant
 
 Definition: The application is registered and available only to users (and service principals) in one Azure AD tenant (the publisher’s tenant).
 Used when an app is meant only for internal use within one organization.
@@ -199,31 +200,83 @@ Multi-Tenant: Like a public restaurant — open to anyone, but each customer pay
 
 # `Implicit flows` vs. `Hybrid flows`
 
+### Implicit flow
+- Tokens (**ID token**, and sometimes **access tokens**) are returned **directly in the browser’s redirect URL** fragment after authentication.
+- No **back-channel exchange** is required.
+- Designed originally for **single-page applications** (SPAs) where there is **no secure backend** to protect client secrets.
+
+#### Advantages: 
+- **Speed**: Get tokens right away in the browser.
+- **Simplicity**: No extra round trips to the token endpoint.
+- **Use Case**: SPAs running entirely in the browser without a backend.
+
+#### Use cases:
+- A legacy **AngularJS** or **React SPA** hosted on static storage (e.g., Azure Blob with static website).
+- The app needs to authenticate users via Entra ID and **quickly obtain an ID token to display user info** and an access token to call an API.
+- Since **the app has no backend**, it uses implicit flow. But Microsoft now recommends Authorization Code Flow with PKCE for SPAs instead of implicit flow.
+
+### Hybrid flow
+- A mix of **implicit flow** and **authorization code flow**.
+- Returns some **tokens immediately via the front-channel** (e.g., **ID token for quick login**), while also returning an **authorization code** that can be exchanged (via **back-channel**) for more secure access/refresh tokens.
+- Best of both worlds:
+  - **Immediate ID token** for user login → better UX (no delay).
+  - **Secure token exchange** (code for access/refresh tokens) via backend → better security.
+- **Use Case**: Web apps with both frontend and **backend**.
+- When a user signs in:
+  - The browser receives an **ID token immediately** → app knows who the user is (fast login experience).
+  - The app’s backend receives an **authorization code**, which it exchanges with Entra ID for access/refresh tokens to **call Microsoft Graph** or **custom APIs securely**.
+  - The backend safely stores refresh tokens to keep users signed in without exposing them to the browser.
+
+| Feature               | Implicit Flow                                 | Hybrid Flow                                                           |
+| --------------------- | --------------------------------------------- | --------------------------------------------------------------------- |
+| Tokens returned       | ID token & access token in redirect           | ID token immediately + authorization code (later exchange for tokens) |
+| Security              | Lower (tokens exposed in browser)             | Higher (tokens via backchannel)                                       |
+| Refresh tokens        | No (in traditional model)                     | Yes (backend can store them)                                          |
+| Suitable for          | Legacy SPAs                                   | Web apps with backend (MVC, Blazor Server, etc.)                      |
+| Azure Entra ID stance | Deprecated for SPAs (use code + PKCE instead) | Still valid for web apps needing fast login + secure token handling   |
+
+**Implicit flow** = Fast food drive-thru 🍔
+- You get your food (tokens) right away through the window (browser redirect). Quick, but maybe not the healthiest or safest.
+
+**Hybrid flow** = Restaurant with takeout + delivery 🍽️
+- You get an appetizer right away (**ID token**, so you know you’re seated), but the main course (access/refresh tokens) comes securely via the kitchen (backchannel). More secure and sustainable.
+
 # How to configure?
 ## A. A PUBLIC server-side Client
 
 #### Azure AD Configuration Changes Required
 
-1. Enable Public Client Flows
+1. Enable **Public Client Flows**
 - In our Azure AD app registration:
-- Go to Authentication → Advanced settings
-- Set "Allow public client flows" to Yes
-This is the crucial setting that tells Azure AD this app can use PKCE without a client secret
+- Go to **Authentication** → **Advanced settings**
+- Set "Allow public client flows" to **Yes**
+This is the crucial setting that tells Azure AD this app can **use PKCE without a client secret**
+
+<img width="50%" height="50%" alt="image" src="https://github.com/user-attachments/assets/ba6ba41a-30cb-4059-9d83-f17121fc5c64" />
 
 2. Verify Platform Configuration
 - In Authentication → Platform configurations
-- Make sure you have a Mobile/Desktop platform configured
+- Make sure you have a **Mobile/Desktop** platform configured
 - Add redirect URI: `http://localhost:8080/auth/callback`
-- Enable ID tokens checkbox
+- Enable **ID tokens** checkbox
 
-If we chose Web platform configured (not Mobile/Desktop) - we should have this issue "Tokens issued for the 'Single-Page Application' client-type may only be redeemed via cross-origin requests."
-This means Microsoft expects SPA applications to make token requests from the browser using CORS, not from a server-side application. 
-Our FastAPI app is making a server-to-server POST request, which Microsoft blocks for SPA platform types.
-Since our FastAPI app makes server-side HTTP requests (not browser CORS requests), you need the Mobile/Desktop platform type, which allows public clients to make server-side token requests with PKCE protection.
+<img width="926" height="465" alt="image" src="https://github.com/user-attachments/assets/cf81a114-5c8e-44b7-add2-453fc25aa063" />
+
+
+If we chose **Web platform configured** (not Mobile/Desktop) - we should have this issue 
+```diff
+- Tokens issued for the 'Single-Page Application' client-type may only be redeemed via cross-origin requests.
+```
+
+- This means Microsoft expects **SPA applications to make token requests from the browser using CORS, not from a server-side application**.
+- Our FastAPI app is making **a server-to-server POST request**, which Microsoft blocks for SPA platform types.
+- Since our FastAPI app makes **server-side HTTP requests** (not browser CORS requests), we need the **Mobile/Desktop platform type**, which allows public clients to make server-side token requests with PKCE protection.
 
 3. Remove Any Client Secrets (Optional)
-- Go to Certificates & secrets
+- Go to **Certificates & secrets**
 - You can delete any existing client secrets since they won't be used
+
+<img width="50%" height="50%" alt="image" src="https://github.com/user-attachments/assets/8196cb5e-b64d-4999-8d66-170b4fe6f335" />
 
 4. Verify API Permissions
 
@@ -233,90 +286,7 @@ In API permissions, ensure you have:
 - `email`
 - `offline_access`
 
-0. Initialization
- - **Tenant ID (or domain)** - Used in our authority URLs:
-```
-https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/authorize
-https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token
-```
-- **Client (Application) ID** - Identifies our app.
-- **Redirect URI** Must be registered in the app as a **public client** redirect URI (e.g. `http://localhost:5000/callback` if developing locally).
-- **Scopes**
-- At minimum: `openid` `profile` `offline_access` `email` + any API scopes (e.g. `api://<resource-app-id>/.default` or `https://graph.microsoft.com/User.Read`).
-
-1. **User visits the app and clicks "login".** The browser makes a request to your FastAPI app (e.g. `/auth/microsoft`).
-   
-2. Server generates **PKCE** and **state values**. The app (server code) generates:
-  - a `code_verifier` (**random secret**),
-  - a `code_challenge` (**SHA256** of the verifier),
-  - a `state` (CSRF guard).
-These values are created **on the server**, **not by the remote authorization server**.
-Our App (Server Provider) creates `code verifier` + `challenge`. Generate a random string (`code_verifier`) and its **SHA256-based Base64URL-encoded hash** (`code_challenge`).
-
-3. The server stores **those values in two places**.
-  - It stores them in `request.session` (**Starlette session**). Important: with Starlette's default `SessionMiddleware`, **session data is serialized into a cookie** and **sent to the browser** (signed but not encrypted).
-  - It also stores {`state` -> `code_verifier`, `timestamp`} in **an in-memory** `StateStore` as a server-side backup.
-    
-4. Server **builds the authorization URL** and **redirects the user's browser**.
-The URL includes
-  - `client_id`,
-  - `response_type=code`,
-  - `redirect_uri`,
-  - `scope`,
-  - `state`,
-  - `code_challenge`, and
-  - `code_challenge_method=S256`.
-The browser is redirected to **Microsoft’s authorization endpoint**.
-
-```
-GET https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize
-?client_id={client_id}
-&response_type=code
-&redirect_uri={redirect_uri}
-&response_mode=query
-&scope={scopes}
-&code_challenge={code_challenge}
-&code_challenge_method=S256
-```
-
-6. **User authenticates & consents at Microsoft**.
-Microsoft prompts the user to **sign in/consent**. The authorization server **records the authorization grant**, including the `code_challenge` and `state` **associated with that authorization request**, so it can verify them later when the code is exchanged.
-
-7. **Authorization server redirects the browser** back to your `callback` with `code` and `state`.
-Microsoft sends the browser back to `REDIRECT_URI` (our `/auth/callback`) with **query parameters like ?code=...&state=....**
-
-8. Your **callback retrieves** `state` and `code_verifier`, then **exchanges the code for tokens**.
-  - The callback checks the `state` against the `session oauth_state` (and — if the session was lost — it looks up the `code_verifier` in the **in-memory** `StateStore` backup).
-  - It retrieves the `code_verifier` (from **session** or **backup**) and then makes a server-side POST to the token endpoint with:
-    - `client_id`,
-    - `client_secret`,
-    - `code`,
-    - `redirect_uri`,
-    - `grant_type=authorization_code`, and
-    - `code_verifier`.
-   
-```
-POST https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token
-Content-Type: application/x-www-form-urlencoded
-
-client_id={client_id}
-grant_type=authorization_code
-code={authorization_code}
-redirect_uri={redirect_uri}
-code_verifier={code_verifier}
-```
-
-8. **Authorization server validates the token request**.
-The **auth server verifies the authorization code**, ensures the `code_verifier` matches the previously stored `code_challenge`, verifies the `client_id` (and `client_secret` if provided), and checks redirect URI, etc.
-
-9. **If valid, the token endpoint returns tokens**.
-Microsoft returns `access_token`, `id_token` (because we asked for openid), and usually `refresh_token` and `expires_in`.
-
-10. **Our app decodes/uses the ID token and stores user info**.
-In the code we call `validate_id_token()` then put **user info** and **tokens** into `request.session` and set `login_time`. We then clear `code_verifier` and `oauth_state` from the **session** and redirect the user to `/`.
-
-11. **The app can use the access token to call our services**.
-When we need protected resources, use the `access_token` in `Authorization headers`. When the token expires, use the `refresh_token` **to get a new access token**.
+# OIDC AuthZ with PKCE flow
 
 ```mermaid
 sequenceDiagram
