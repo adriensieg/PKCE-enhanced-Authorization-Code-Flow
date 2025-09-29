@@ -62,7 +62,7 @@
 - [**LocalStorage** vs. **Session** vs. **Cookie**](#cookie-vs-session-vs-local-storage)
 - **Should JWT Token be stored in a cookie, header or body?**
  
-# 0. What you need from Azure Entra ID?
+# What you need from Azure Entra ID?
 - **Public Client (PKCE only)**
   - `Tenant ID` (or domain)
   - `Client ID`
