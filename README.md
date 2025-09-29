@@ -55,10 +55,10 @@
      - [JWKS](#12-jwks-json-web-key-set--public-signing-keys)
  - [**How to add a new features?**](#11)
  - **Bearer token**
- - **Traditional Cookie-Based Auth** vs **Modern Token Based Auth**
+ - [**Traditional Cookie-Based Auth** vs **Modern Token Based Auth**](#cookie-based-auth-vs-token-based-auth)
    - **Cookie-based auth** relies on **server-side sessions** and cookies handled by the browser.
    - **Token-based auth** relies on **stateless tokens (JWTs)** that the client must attach explicitly to requests.
-- **LocalStorage** vs. **Session** vs. **Cookie**
+- [**LocalStorage** vs. **Session** vs. **Cookie**](#cookie-vs-session-vs-local-storage)
 - **Should JWT Token be stored in a cookie, header or body?**
  
 # 0. What you need from Azure Entra ID?
@@ -730,6 +730,7 @@ Like in the case of cookies, the user **sends this token to the server with ever
 | **15. Best for** | Server-rendered web apps, classic login flows | APIs, mobile apps, SPAs, microservices |
 | **16. Example header** | `Cookie: session=...` | `Authorization: Bearer <token>` |
 
+https://jonathanmh.com/p/cookies-sessionstorage-localstorage-whats-the-difference/
 
 # `Cookie` vs. `Session` vs. `Local Storage`
 
