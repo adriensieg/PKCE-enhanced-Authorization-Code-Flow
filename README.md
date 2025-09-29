@@ -21,16 +21,16 @@
 - https://datatracker.ietf.org/doc/html/rfc7636
 
 ## Considerations before starting: 
-- [**What you need from Azure Entra ID?**]()
-- [**What functionality does this app offer?**]()
+- [**What you need from Azure Entra ID?**](#what-you-need-from-azure-entra-id)
+- [**What functionality does this app offer?**](#what-functionality-does-this-app-offer)
     - [Authentication & Authorization](#a-authentication--authorization)
     - [Session Security](#b-session-security)
     - [Transport & Browser Security Headers](#c-transport--browser-security-headers)
     - [Rate Limiting & DoS Protection](#d-rate-limiting--dos-protection)
     - [Additional Application Security](#e-additional-application-security)
-- [**Public Client** vs. **Private Client**]()
-- [**Multi-tenant** vs. **Single-tenant**]()
-- [**Code vs. Tokens**]()
+- [**Public Client** vs. **Private Client**](#public-vs-private-app)
+- [**Multi-tenant** vs. **Single-tenant**](#tenant-in-azure-entra-id)
+- [**Code vs. Tokens**](#code-vs-tokens)
 - [**Access tokens** vs **ID tokens**]()
 - [**Implicit flows** vs. **Hybrid flows**]()
 - [**How to configure?**]()
@@ -40,8 +40,8 @@
        - **SPA**: Must use browser-based CORS requests (JavaScript fetch/XMLHttpRequest)
        - **Mobile/Desktop** (PublicClient): Allows server-side token exchange with PKCE
        - **Web**: Requires client authentication (secret/certificate)
- - [**Introspection endpoints**]()
- - [**Dictionary of Codes and Tokens**]()
+ - [**Introspection endpoints**](#introspection-endpoints)
+ - [**Dictionary of Codes and Tokens**](#dictionary-of-codes-and-tokens)
      - [code_verifier](#1-code_verifier)
      - [code_challenge](#2-code_challenge-s256)
      - [state](#3-state)
