@@ -708,6 +708,9 @@ Like in the case of cookies, the user **sends this token to the server with ever
 
 👉 In practice: HTTP-only secure cookies are preferred when possible.
 
+<img width="800" height="388" alt="image" src="https://github.com/user-attachments/assets/b72bd164-d075-40ce-a411-8f8b78856ded" />
+
+
 | Criteria | Session Authentication Method | Token-Based Authentication Method |
 |----------|-------------------------------|-----------------------------------|
 | **1. Which side of the connection stores the authentication details** | Server | User |
