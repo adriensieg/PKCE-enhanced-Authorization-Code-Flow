@@ -60,6 +60,7 @@
  - [**Traditional Cookie-Based Auth** vs **Modern Token Based Auth**](#cookie-based-auth-vs-token-based-auth)
    - **Cookie-based auth** relies on **server-side sessions** and cookies handled by the browser.
    - **Token-based auth** relies on **stateless tokens (JWTs)** that the client must attach explicitly to requests.
+- [**The Two-Cookie Architecture: Understanding SSO in Azure Entra ID**]
 - [**LocalStorage** vs. **Session** vs. **Cookie**](#cookie-vs-session-vs-local-storage)
 - **Should JWT Token be stored in a cookie, header or body?**
  
@@ -652,7 +653,6 @@ Cookie: sessionID=abc123xyz
 
 <img width="660" height="330" alt="image" src="https://github.com/user-attachments/assets/24f923c5-b345-49b3-8a72-65310e0ace6b" />
 
-   
 ## B. ** Token Based Auth
 
 - The server’s job is to **sign** and **verify**, **not to store session data**.
@@ -684,7 +684,6 @@ Like in the case of cookies, the user **sends this token to the server with ever
 
 <img width="800" height="388" alt="image" src="https://github.com/user-attachments/assets/b72bd164-d075-40ce-a411-8f8b78856ded" />
 
-
 | Criteria | Session Authentication Method | Token-Based Authentication Method |
 |----------|-------------------------------|-----------------------------------|
 | **1. Which side of the connection stores the authentication details** | Server | User |
@@ -706,48 +705,155 @@ Like in the case of cookies, the user **sends this token to the server with ever
 
 https://jonathanmh.com/p/cookies-sessionstorage-localstorage-whats-the-difference/
 
-# `Cookie` vs. `Session` vs. `Local Storage`
+# The Two-Cookie Architecture: Understanding SSO in Azure Entra ID
 
-# SSO 
+## Core Concept: Two Types of Cookies
+There are **two distinct cookies** in play:
+- **IdP Session Cookie** (stored at the **IdP domain**, e.g., **login.microsoftonline.com**)
+- **Application Session Cookie** (stored at each application's domain, e.g., **appA.com**, **appB.com**)
+
+## How SSO Works: The Cookie Dance
+
+### A. Initial Login to Application A
+
+- User visits `appA.com` → redirected to Azure Entra ID (**<mark>login.microsoftonline.com</mark>**)
+- User authenticates (username/password/MFA)
+- IdP **sets a session cookie in the browser** at **<mark>login.microsoftonline.com</mark>** domain
+- IdP redirects back to `appA.com` with an **authorization code**
+- Application A exchanges the code for tokens (**ID token**, **access token**)
+- Application A sets its **own session cookie at appA.com domain**
+- **Tokens** are typically **stored server-side**; the **app cookie is just a session identifier**
+
+### B. Subsequent Access to Application B (SSO)
+
+- User visits `appB.com` → redirected to Azure Entra ID
+- Key moment: **The browser automatically sends the IdP session cookie** (from **<mark>login.microsoftonline.com</mark>**) because it's still valid
+- Azure Entra ID recognizes **the session cookie** → **skips authentication** → issues new tokens for Application B
+- IdP redirects to `appB.com` with an **authorization code**
+- **Application B** exchanges **code** for **tokens**
+- **Application B** sets its **own session cookie** at `appB.co`m domain
+
+👉 **Critical insight**: **Application B** does silently reach out to the IdP, but the user doesn't see a login prompt because the IdP session cookie proves they already authenticated.
+
+| Cookie Type          | Stored Where            | Domain                        | Purpose                                           |
+|----------------------|-------------------------|-------------------------------|---------------------------------------------------|
+| IdP Session Cookie   | Browser's cookie jar    | `login.microsoftonline.com`   | Proves user authenticated with Azure Entra ID     |
+| Application A Cookie | Browser's cookie jar    | `appA.com`                    | Identifies user’s session with App A              |
+| Application B Cookie | Browser's cookie jar    | `appB.com`                    | Identifies user’s session with App B              |
+
+**Important**: 
+- Cookies are **domain-specific**.
+- **Application A** cannot read **Application B's cookie**.
+- Only the **IdP cookie** is shared with the IdP when applications redirect to it.
+
+### C. Authorization Enforcement (Application C Scenario) - Flow for Unauthorized Application
+- User visits `appC.com` → redirected to Azure Entra ID
+- Browser sends **IdP session cookie** (user is authenticated)
+- Azure Entra ID checks: *Is this user assigned to Application C?*
+- Authorization fails → User sees **error page** (e.g., **"AADSTS50105: User not assigned"**)
+- *No tokens issued, no application cookie created*
+
+### Where Authorization is Stored
+- **Enterprise Applications**: Azure Entra ID maintains assignments (users/groups → applications)
+- **App Roles**: Defined in application manifest, assigned to users/groups
+- **Conditional Access Policies**: Additional runtime checks (device compliance, location, etc.)
+
+### Authorization is NOT in the IdP Session Cookie
+- The **IdP session cookie** only proves authentication (who you are)
+- Authorization (what you can access) is evaluated **per application during token issuance**
+
+### Takeaways
+- IdP Session Cookie = "I authenticated with Azure Entra ID"
+  - Lives at login.microsoftonline.com
+  - Sent automatically when browser redirects to IdP
+  - Enables SSO (no re-authentication)
+    
+- Application Cookies = "I have a session with this specific app"
+  - Each app has its own cookie at its own domain
+  - Apps cannot read each other's cookies
+  - Just session identifiers; actual tokens stored server-side
+    
+- Authorization Happens at Token Issuance
+  - Authentication (IdP session) ≠ Authorization (app access)
+  - Azure Entra ID checks app assignments every time tokens are requested
+  - If unauthorized, the flow stops before tokens are issued
+    
+- Silent Re-authentication
+  - "Silent" means the user doesn't see a login prompt
+  - The application does redirect to the IdP
+  - The IdP validates the session cookie and returns tokens
+  - This happens in milliseconds (user might see a brief redirect flash)
+
+Once Application B has tokens, it can use the refresh token to get new access tokens without contacting the IdP (until the refresh token expires, typically 90 days). 
+The IdP session cookie is only needed when first accessing a new application or after all tokens expire.
 
 ```mermaid
 sequenceDiagram
     participant User
+    participant AppA as Application A<br/>(appA.com)
     participant Browser
-    participant AppA
-    participant AppB
-    participant AppC
-    participant EntraID as Azure Entra ID (IdP)
+    participant IdP as Azure Entra ID<br/>(login.microsoftonline.com)
+    participant AppB as Application B<br/>(appB.com)
+    participant AppC as Application C<br/>(appC.com)
 
-    Note over EntraID: Holds IdP Session Cookie (SSO)
-    Note over AppA, AppB, AppC: Each holds its own App Session Cookie
+    Note over User,AppC: INITIAL LOGIN TO APPLICATION A
+    
+    User->>AppA: 1. Access appA.com
+    AppA->>Browser: 2. Redirect to IdP
+    Browser->>IdP: 3. GET /authorize<br/>(NO cookies yet)
+    IdP->>User: 4. Show login page
+    User->>IdP: 5. Enter credentials
+    
+    Note over IdP: User authenticated!
+    
+    IdP->>Browser: 6. Set-Cookie: IdP_Session<br/>(domain: login.microsoftonline.com)
+    IdP->>Browser: 7. Redirect to appA.com<br/>with authorization code
+    Browser->>AppA: 8. GET /callback?code=xyz
+    AppA->>IdP: 9. Exchange code for tokens
+    IdP->>AppA: 10. ID Token + Access Token
+    AppA->>Browser: 11. Set-Cookie: AppA_Session<br/>(domain: appA.com)
+    Browser->>User: 12. Show Application A
 
-    User->>AppA: Access Application A
-    AppA->>Browser: Redirect to Entra ID
-    Browser->>EntraID: Request + (no IdP cookie yet)
-    EntraID->>User: Prompt login
-    User->>EntraID: Enter credentials
-    EntraID->>Browser: Set IdP Session Cookie (login.microsoftonline.com)
-    EntraID->>AppA: Return ID Token + Access Token
-    AppA->>Browser: Set AppA Session Cookie
-    AppA->>User: Grants access
+    Note over Browser: Cookies stored:<br/>IdP_Session @ login.microsoftonline.com<br/>AppA_Session @ appA.com
 
-    User->>AppB: Access Application B
-    AppB->>Browser: Redirect to Entra ID
-    Browser->>EntraID: Request + IdP Session Cookie sent
-    EntraID->>AppB: New ID Token + Access Token
-    AppB->>Browser: Set AppB Session Cookie
-    AppB->>User: Grants access (no re-login)
+    Note over User,AppC: SSO TO APPLICATION B (AUTHORIZED)
 
-    User->>AppC: Access Application C
-    AppC->>Browser: Redirect to Entra ID
-    Browser->>EntraID: Request + IdP Session Cookie sent
-    EntraID-->>AppC: Refuses token (user not assigned)
-    AppC->>User: Access Denied
+    User->>AppB: 13. Access appB.com
+    AppB->>Browser: 14. Redirect to IdP
+    Browser->>IdP: 15. GET /authorize<br/>Cookie: IdP_Session ✓
+    
+    Note over IdP: Session cookie valid!<br/>User already authenticated.<br/>Check authorization...
+    
+    Note over IdP: ✓ User assigned to App B
+    
+    IdP->>Browser: 16. Redirect to appB.com<br/>with authorization code<br/>(NO login prompt!)
+    Browser->>AppB: 17. GET /callback?code=abc
+    AppB->>IdP: 18. Exchange code for tokens
+    IdP->>AppB: 19. ID Token + Access Token
+    AppB->>Browser: 20. Set-Cookie: AppB_Session<br/>(domain: appB.com)
+    Browser->>User: 21. Show Application B
 
+    Note over Browser: Cookies stored:<br/>IdP_Session @ login.microsoftonline.com<br/>AppA_Session @ appA.com<br/>AppB_Session @ appB.com
 
+    Note over User,AppC: ATTEMPT TO ACCESS APPLICATION C (NOT AUTHORIZED)
+
+    User->>AppC: 22. Access appC.com
+    AppC->>Browser: 23. Redirect to IdP
+    Browser->>IdP: 24. GET /authorize<br/>Cookie: IdP_Session ✓
+    
+    Note over IdP: Session cookie valid!<br/>User authenticated.<br/>Check authorization...
+    
+    Note over IdP: ✗ User NOT assigned to App C
+    
+    IdP->>Browser: 25. Error page<br/>"AADSTS50105: User not assigned"
+    Browser->>User: 26. Access Denied
+    
+    Note over Browser: NO AppC_Session cookie created<br/>NO tokens issued
 ```
 
+
+
+# `Cookie` vs. `Session` vs. `Local Storage`
 
 
 - https://jonathanmh.com/p/cookies-sessionstorage-localstorage-whats-the-difference/
