@@ -60,7 +60,7 @@
  - [**Traditional Cookie-Based Auth** vs **Modern Token Based Auth**](#cookie-based-auth-vs-token-based-auth)
    - **Cookie-based auth** relies on **server-side sessions** and cookies handled by the browser.
    - **Token-based auth** relies on **stateless tokens (JWTs)** that the client must attach explicitly to requests.
-- [**The Two-Cookie Architecture: Understanding SSO in Azure Entra ID**]
+- [**The Two-Cookie Architecture: Understanding SSO in Azure Entra ID**](#the-two-cookie-architecture-understanding-sso-in-azure-entra-id)
 - [**LocalStorage** vs. **Session** vs. **Cookie**](#cookie-vs-session-vs-local-storage)
 - **Should JWT Token be stored in a cookie, header or body?**
  
