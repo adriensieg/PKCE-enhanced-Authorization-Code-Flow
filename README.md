@@ -758,6 +758,7 @@ Cookie: ESTSAUTH=abcdefghijkl; ESTSAUTHPERSISTENT=xyz123
 
 <img width="1257" height="553" alt="image" src="https://github.com/user-attachments/assets/c22b6401-880c-429c-b713-30c50f2d8a3b" />
 
+<img width="1830" height="766" alt="image" src="https://github.com/user-attachments/assets/c38d8778-ef04-485f-9df3-6664d859599e" />
 
 ## How SSO Works: The Cookie Dance
 
