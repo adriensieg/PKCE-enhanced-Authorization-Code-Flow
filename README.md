@@ -708,6 +708,46 @@ https://jonathanmh.com/p/cookies-sessionstorage-localstorage-whats-the-differenc
 
 # `Cookie` vs. `Session` vs. `Local Storage`
 
+# SSO 
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Browser
+    participant AppA
+    participant AppB
+    participant AppC
+    participant EntraID as Azure Entra ID (IdP)
+
+    Note over EntraID: Holds IdP Session Cookie (SSO)
+    Note over AppA, AppB, AppC: Each holds its own App Session Cookie
+
+    User->>AppA: Access Application A
+    AppA->>Browser: Redirect to Entra ID
+    Browser->>EntraID: Request + (no IdP cookie yet)
+    EntraID->>User: Prompt login
+    User->>EntraID: Enter credentials
+    EntraID->>Browser: Set IdP Session Cookie (login.microsoftonline.com)
+    EntraID->>AppA: Return ID Token + Access Token
+    AppA->>Browser: Set AppA Session Cookie
+    AppA->>User: Grants access
+
+    User->>AppB: Access Application B
+    AppB->>Browser: Redirect to Entra ID
+    Browser->>EntraID: Request + IdP Session Cookie sent
+    EntraID->>AppB: New ID Token + Access Token
+    AppB->>Browser: Set AppB Session Cookie
+    AppB->>User: Grants access (no re-login)
+
+    User->>AppC: Access Application C
+    AppC->>Browser: Redirect to Entra ID
+    Browser->>EntraID: Request + IdP Session Cookie sent
+    EntraID-->>AppC: Refuses token (user not assigned)
+    AppC->>User: Access Denied
+
+
+```
+
 
 
 - https://jonathanmh.com/p/cookies-sessionstorage-localstorage-whats-the-difference/
