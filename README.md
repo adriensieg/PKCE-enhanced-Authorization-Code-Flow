@@ -709,13 +709,59 @@ https://jonathanmh.com/p/cookies-sessionstorage-localstorage-whats-the-differenc
 
 ## Core Concept: Two Types of Cookies
 There are **two distinct cookies** in play:
-- **IdP Session Cookie** (stored at the **IdP domain**, e.g., **login.microsoftonline.com**)
+- **IdP Session Cookie** (stored at the **IdP domain**, e.g., **<mark>login.microsoftonline.com</mark>**)
 - **Application Session Cookie** (stored at each application's domain, e.g., **appA.com**, **appB.com**)
+
+## Different cookies and where they live
+
+#### IdP session cookie (Entra ID)
+- **Definition**: A cookie the Microsoft Entra ID service sets to remember your authenticated session (names you’ll see: `ESTSAUTH`, `ESTSAUTHPERSISTENT`, `x-ms-cpim-sso:{id}`, etc.). It is stored in the browser’s cookie jar and scoped to the IdP domain (`login.microsoftonline.com`). Some are transient (session) and some persistent.
+- **Can apps read it?** No — browser cookies are scoped by domain. An app on app.contoso.com cannot read cookies set for login.microsoftonline.com. The browser sends those cookies only when the browser requests the IdP domain. 
+
+#### Application session cookie (AppA, AppB, …)
+- **Definition**: after the app validates the ID token, the app usually creates its own session cookie (scoped to the app’s domain) so the user doesn’t need token validation on every page. This cookie is separate per app and not shared across different app domains. 
+Microsoft Learn
+
+### Tokens (ID token / Access token / Refresh token)
+- **Definition**: JWTs (or opaque tokens) issued by Entra ID to the application. They are not browser cookies by default — the app receives them (typically via the authorization-code exchange) and may keep them server-side or store session pointers in an app cookie. Token contents include identity claims, scopes, roles, and optionally groups.
+
+#### How the IdP session cookie is created and retrieved (HTTP-level)
+
+**<mark>Step A — First sign-in (App A):</mark>**
+  1. User → Browser → requests `https://appA.example.com`.
+  2. AppA redirects browser to Entra ID `/authorize` endpoint (`302`). Browser follows redirect and makes a request to *https://login.microsoftonline.com/*....
+  3. Because the user is not yet authenticated on Entra ID, Entra returns a login page. After successful credentials/MFA, Entra responds (to the browser) with `Set-Cookie headers` that create the **IdP session cookie(s)** in the browser. The response then redirects back to the app with an authorization code (standard Auth Code flow). 
+
+**Response header that creates the IdP cookie**
+```
+HTTP/1.1 302 Found
+Set-Cookie: ESTSAUTH=abcdefghijkl; Domain=login.microsoftonline.com; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=86400
+Location: https://appA.example.com/?code=AUTH_CODE
+```
+
+**<mark>Step B — Browser stores the cookie</mark>**
+The browser stores that cookie in its cookie jar under the domain `login.microsoftonline.com`. `Server-set` cookies are often `HttpOnly` (not readable by JS); some Microsoft client-side cookies are intentionally `HttpOnly=false` for client-side logic. 
+
+**<mark>Step C — Later when accessing App B (SSO):</mark>**
+- User navigates to `https://appB.example.com`.
+- AppB redirects the browser to `https://login.microsoftonline.com/`
+- ... for authentication.
+- Browser automatically sends the IdP cookie(s) along with that request because the request is to login.microsoftonline.com. (Browsers include cookies for the request’s domain/path automatically.) Entra sees the cookie and knows the user already has a valid session → it issues an authorization code / tokens for AppB without prompting for credentials. 
+
+Request header the IdP receives on the redirect
+```
+GET /common/oauth2/v2.0/authorize?... HTTP/1.1
+Host: login.microsoftonline.com
+Cookie: ESTSAUTH=abcdefghijkl; ESTSAUTHPERSISTENT=xyz123
+```
+👉 Key point: the IdP cookie is not transmitted from AppA to AppB or read by AppB; the browser sends it only to the IdP when redirected there. Apps only get tokens back from the IdP
+
+<img width="1257" height="553" alt="image" src="https://github.com/user-attachments/assets/c22b6401-880c-429c-b713-30c50f2d8a3b" />
+
 
 ## How SSO Works: The Cookie Dance
 
 ### A. Initial Login to Application A
-
 - User visits `appA.com` → redirected to Azure Entra ID (**<mark>login.microsoftonline.com</mark>**)
 - User authenticates (username/password/MFA)
 - IdP **sets a session cookie in the browser** at **<mark>login.microsoftonline.com</mark>** domain
@@ -752,7 +798,7 @@ There are **two distinct cookies** in play:
 - Azure Entra ID checks: *Is this user assigned to Application C?*
 - Authorization fails → User sees **error page** (e.g., **"AADSTS50105: User not assigned"**)
 - *No tokens issued, no application cookie created*
-
+  
 ### Where Authorization is Stored
 - **Enterprise Applications**: Azure Entra ID maintains assignments (users/groups → applications)
 - **App Roles**: Defined in application manifest, assigned to users/groups
@@ -763,26 +809,27 @@ There are **two distinct cookies** in play:
 - Authorization (what you can access) is evaluated **per application during token issuance**
 
 ### Takeaways
-- IdP Session Cookie = "I authenticated with Azure Entra ID"
+- **<mark>IdP Session Cookie = "I authenticated with Azure Entra ID"</mark>**
   - Lives at login.microsoftonline.com
   - Sent automatically when browser redirects to IdP
   - Enables SSO (no re-authentication)
     
-- Application Cookies = "I have a session with this specific app"
+- **<mark>Application Cookies = "I have a session with this specific app"</mark>**
   - Each app has its own cookie at its own domain
   - Apps cannot read each other's cookies
   - Just session identifiers; actual tokens stored server-side
     
-- Authorization Happens at Token Issuance
+- **<mark>Authorization Happens at Token Issuance</mark>**
   - Authentication (IdP session) ≠ Authorization (app access)
   - Azure Entra ID checks app assignments every time tokens are requested
   - If unauthorized, the flow stops before tokens are issued
     
-- Silent Re-authentication
+- **<mark>Silent Re-authentication</mark>**
   - "Silent" means the user doesn't see a login prompt
   - The application does redirect to the IdP
   - The IdP validates the session cookie and returns tokens
   - This happens in milliseconds (user might see a brief redirect flash)
+  - Is the app “silently reaching out” to the IdP? The app redirects the browser to the IdP; the browser’s redirect includes the cookie, so Entra can silently reissue tokens. From the user’s view it looks “silent.” 
 
 Once Application B has tokens, it can use the refresh token to get new access tokens without contacting the IdP (until the refresh token expires, typically 90 days). 
 The IdP session cookie is only needed when first accessing a new application or after all tokens expire.
