@@ -17,6 +17,41 @@
        +--------+                                | +---------------+ |
                                                  +-------------------+
 
+#### User signs in at Service A (Authorization Code + PKCE)
+
+- **IdP / Authorization Server (<mark>AS</mark>)** — issues tokens (OpenID Connect provider).
+- **Client** — an application registered at the AS.
+- **Resource Server** (<mark>RS</mark>) — API that accepts access tokens.
+- **User** — the human who authenticates to RS (OIDC).
+
+1. **Browser** → **SP** starts OIDC Authorization Request to **AS**:
+```
+GET /authorize?
+  response_type=code
+  &client_id=<A_client_id>
+  &scope=openid profile email offline_access <api.scope.for.B>
+  &redirect_uri=https://a.example.com/callback
+  &state=...
+  &code_challenge=<pkce_challenge>
+  &code_challenge_method=S256
+```
+(Use PKCE for every authorization code flow — recommended by RFC 7636 / OIDC best practice). 
+
+2. User **authenticates** at IdP, **consents** to requested scopes. IdP redirects back to **SP** with **code**.
+3. SP exchanges `code` + `code_verifier` at **token endpoint for tokens**:
+```
+POST /token
+grant_type=authorization_code
+code=<code>
+client_id=<A_client_id>     # if confidential, also authenticate client
+code_verifier=<code_verifier>
+redirect_uri=...
+```
+4. Response includes `id_token` (OIDC), `access_token` (for calling ressources/APIs), maybe a `refresh_token` (if allowed).
+5. What **SP** has now
+  - `id_token`: proves who the user is (used by SP to establish session). Validate `iss`, `aud`, `exp`, `nonce` per OIDC.
+  - `access_token`: **bearer access token** that can be presented to Resource Servers to **perform actions on behalf** of the user.                             
+
 - *Request along with the transformation method "t_m"*
 - https://datatracker.ietf.org/doc/html/rfc7636
 
