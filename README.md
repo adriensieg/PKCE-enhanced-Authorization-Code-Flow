@@ -19,10 +19,10 @@
 
 #### Flow - user signs in at a Resource Provider (Authorization Code + PKCE)
 
-- **IdP / Authorization Server (<mark>AS</mark>)** — issues tokens (OpenID Connect provider).
-- **Client** — an application registered at the AS.
-- **Resource Server** (**<mark>RS</mark>**) — API/resources that accepts access tokens.
 - **User** — the human who authenticates to **RS** (OIDC).
+- **Client** — an application (Resource server) registered at the AS.
+- **IdP / Authorization Server (<mark>AS</mark>)** — issues tokens (OpenID Connect provider).
+- **Resource Server** (**<mark>RS</mark>**) — API/resources that accepts **access tokens**.
 
 1. **Browser** → **SP** starts OIDC Authorization Request to **AS**:
 ```
