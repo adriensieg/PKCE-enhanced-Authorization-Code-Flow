@@ -1,61 +1,7 @@
 # OAuth using OIDC Authentication with PKCE for a Public and Private Client
 
-                                                 +-------------------+
-                                                 |   Authz Server    |
-       +--------+                                | +---------------+ |
-       |        |--(A)- Authorization Request ---->|               | |
-       |        |       + t(code_verifier), t_m  | | Authorization | |
-       |        |                                | |    Endpoint   | |
-       |        |<-(B)---- Authorization Code -----|               | |
-       |        |                                | +---------------+ |
-       | Client |                                |                   |
-       |        |                                | +---------------+ |
-       |        |--(C)-- Access Token Request ---->|               | |
-       |        |          + code_verifier       | |    Token      | |
-       |        |                                | |   Endpoint    | |
-       |        |<-(D)------ Access Token ---------|               | |
-       +--------+                                | +---------------+ |
-                                                 +-------------------+
-
-#### Simplified flow - when a user signs in at a Resource Provider (Authorization Code + PKCE)
-
-- **User** — the human who authenticates to **RS** (OIDC).
-- **Client** — an application (Resource server) registered at the AS.
-- **IdP / Authorization Server (<mark>AS</mark>)** — issues tokens (OpenID Connect provider).
-- **Resource Server** (**<mark>RS</mark>**) — API/resources that accepts **access tokens**.
-
-1. **Browser** → **SP** starts OIDC Authorization Request to **AS**:
-```
-GET /authorize?
-  response_type=code
-  &client_id=<A_client_id>
-  &scope=openid profile email offline_access <api.scope.for.B>
-  &redirect_uri=https://a.example.com/callback
-  &state=...
-  &code_challenge=<pkce_challenge>
-  &code_challenge_method=S256
-```
-(Use PKCE for every authorization code flow — recommended by RFC 7636 / OIDC best practice). 
-
-2. User **authenticates** at IdP, **consents** to requested scopes. IdP redirects back to **SP** with **code**.
-3. SP exchanges `code` + `code_verifier` at **token endpoint for tokens**:
-```
-POST /token
-grant_type=authorization_code
-code=<code>
-client_id=<A_client_id>     # if confidential, also authenticate client
-code_verifier=<code_verifier>
-redirect_uri=...
-```
-4. Response includes `id_token` (OIDC), `access_token` (for calling ressources/APIs), maybe a `refresh_token` (if allowed).
-5. What **SP** has now
-  - `id_token`: proves who the user is (used by SP to establish session). Validate `iss`, `aud`, `exp`, `nonce` per OIDC.
-  - `access_token`: **bearer access token** that can be presented to Resource Servers to **perform actions on behalf** of the user.                             
-
-- *Request along with the transformation method "t_m"*
-- https://datatracker.ietf.org/doc/html/rfc7636
-
-## Considerations before starting: 
+## Considerations before starting:
+- Simplified flow
 - [**What you need from Azure Entra ID?**](#what-you-need-from-azure-entra-id)
 - [**What functionality does this app offer?**](#what-functionality-does-this-app-offer)
     - [Authentication & Authorization](#a-authentication--authorization)
@@ -98,7 +44,117 @@ redirect_uri=...
 - [**The Two-Cookie Architecture: Understanding SSO in Azure Entra ID**](#the-two-cookie-architecture-understanding-sso-in-azure-entra-id)
 - [**LocalStorage** vs. **Session** vs. **Cookie**](#cookie-vs-session-vs-local-storage)
 - **Should JWT Token be stored in a cookie, header or body?**
- 
+
+                                                 +-------------------+
+                                                 |   Authz Server    |
+       +--------+                                | +---------------+ |
+       |        |--(A)- Authorization Request ---->|               | |
+       |        |       + t(code_verifier), t_m  | | Authorization | |
+       |        |                                | |    Endpoint   | |
+       |        |<-(B)---- Authorization Code -----|               | |
+       |        |                                | +---------------+ |
+       | Client |                                |                   |
+       |        |                                | +---------------+ |
+       |        |--(C)-- Access Token Request ---->|               | |
+       |        |          + code_verifier       | |    Token      | |
+       |        |                                | |   Endpoint    | |
+       |        |<-(D)------ Access Token ---------|               | |
+       +--------+                                | +---------------+ |
+                                                 +-------------------+
+- *Request along with the transformation method "t_m"*
+- https://datatracker.ietf.org/doc/html/rfc7636
+
+#### Simplified flow - when a user signs in at a Resource Provider (Authorization Code + PKCE)
+
+##### Actors:
+- User — human authenticating.
+- Client (SP) — app at adriensieg registered in Entra ID.
+- Authorization Server (AS / IdP) — Azure Entra ID (OpenID Provider).
+- Resource Server (RS) — API accepting access tokens.
+  
+##### Simplified flow: 
+1. **<mark>Client prepares PKCE parameters</mark>**
+```
+code_verifier = random(43–128 chars)
+code_challenge = BASE64URL(SHA256(code_verifier))
+```
+
+2. **<mark>Browser → Client starts OIDC Auth Request</mark>**
+
+```
+GET https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/authorize?
+    response_type=code
+    &client_id=<client_id>
+    &scope=openid profile email offline_access api://<resource_api_id>/.default
+    &redirect_uri=https://adriensieg/callback
+    &state=<random_state>
+    &nonce=<random_nonce>
+    &code_challenge=<pkce_challenge>
+    &code_challenge_method=S256
+```
+
+3. **<mark>User authenticates at Azure Entra ID</mark>**
+  - Enters credentials / MFA.
+  - Grants consent to requested scopes.
+
+4. **<mark>Authorization Server → redirects back to Client</mark>**
+```
+https://adriensieg/callback?code=<auth_code>&state=<state>
+https://localhost/callback?code=<auth_code>&state=<state>
+```
+
+5. **<mark>Client → Token Request (back channel)</mark>**
+```
+POST https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=authorization_code
+code=<auth_code>
+client_id=<client_id>
+redirect_uri=https://adriensieg/callback
+code_verifier=<original_code_verifier>
+```
+(If confidential client → include client_secret or use client_assertion)
+
+6. **<mark>Authorization Server → Token Response</mark>**
+```
+{
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "access_token": "eyJhbGciOiJIUzI1NiIs...",
+  "id_token": "eyJhbGciOiJSUzI1NiIs...",
+  "refresh_token": "..."   // optional
+}
+```
+
+7. **<mark>Client validates tokens</mark>**
+  - Verify `id_token` claims: `iss`, `aud`, `exp`, `nonce`, `signature`.
+  - Use `id_token` to establish local user session.
+  - Store `refresh_token` securely (if present).
+
+8. **<mark>Client → Resource Server</mark>**
+```
+GET https://api.adriensieg/resource
+Authorization: Bearer <access_token>
+```
+
+9. **<mark>RS validates access token</mark>**
+  - Checks signature, `iss`, `aud`, `exp`, `scopes`.
+  - Grants or denies resource access.
+
+10. **<mark>(Optional) Token refresh</mark>**
+```
+POST /token
+grant_type=refresh_token
+client_id=<client_id>
+refresh_token=<refresh_token>
+```
+
+End result:
+- `id_token` → proves identity (for session at SP).
+- `access_token` → allows API calls to RS.
+- `refresh_token` → allows silent renewal (if offline_access granted).
+  
 # What you need from Azure Entra ID?
 - **Public Client (PKCE only)**
   - `Tenant ID` (or domain)
