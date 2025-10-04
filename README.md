@@ -17,7 +17,7 @@
        +--------+                                | +---------------+ |
                                                  +-------------------+
 
-#### User signs in at Service A (Authorization Code + PKCE)
+#### Flow - user signs in at Service A (Authorization Code + PKCE)
 
 - **IdP / Authorization Server (<mark>AS</mark>)** — issues tokens (OpenID Connect provider).
 - **Client** — an application registered at the AS.
