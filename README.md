@@ -17,7 +17,7 @@
        +--------+                                | +---------------+ |
                                                  +-------------------+
 
-#### Flow - user signs in at a Resource Provider (Authorization Code + PKCE)
+#### Simplified flow - when a user signs in at a Resource Provider (Authorization Code + PKCE)
 
 - **User** — the human who authenticates to **RS** (OIDC).
 - **Client** — an application (Resource server) registered at the AS.
