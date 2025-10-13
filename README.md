@@ -744,7 +744,7 @@ Cookie: sessionID=abc123xyz
 
 <img width="660" height="330" alt="image" src="https://github.com/user-attachments/assets/24f923c5-b345-49b3-8a72-65310e0ace6b" />
 
-## B. ** Token Based Auth
+## B. Token Based Auth
 
 - The server’s job is to **sign** and **verify**, **not to store session data**.
 
