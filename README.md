@@ -990,6 +990,45 @@ sequenceDiagram
     Note over Browser: NO AppC_Session cookie created<br/>NO tokens issued
 ```
 
+```mermaid
+sequenceDiagram
+    participant User as 👤 User (Browser)
+    participant AppA as 🟦 App A (app-a.com)
+    participant AppB as 🟩 App B (app-b.com)
+    participant IdP as 🔐 Azure AD (login.microsoftonline.com)
+
+    %% --- First Login Flow (App A) ---
+    User->>AppA: Access protected resource
+    AppA-->>User: 302 Redirect → Azure AD (OIDC Auth Request)
+    User->>IdP: Request login.microsoftonline.com/authorize
+    IdP-->>User: Login Page
+    User->>IdP: Enter credentials
+    IdP->>User: Set **IdP cookie** (domain=login.microsoftonline.com)
+    IdP-->>AppA: Redirect with **Auth Code**
+    AppA->>IdP: Exchange code for **ID Token + Access Token**
+    IdP-->>AppA: Tokens (aud=AppA)
+    AppA->>User: Set **App A cookie** (domain=app-a.com)
+    Note right of User: ✅ User logged into App A<br/>🍪 App A cookie<br/>🍪 IdP cookie (SSO session)
+
+    %% --- Second Login Flow (App B) ---
+    User->>AppB: Access protected resource
+    AppB-->>User: 302 Redirect → Azure AD (OIDC Auth Request)
+    User->>IdP: Request login.microsoftonline.com/authorize
+    IdP-->>User: Reads **existing IdP cookie**
+    IdP-->>AppB: Redirect with **Auth Code** (no login prompt)
+    AppB->>IdP: Exchange code for **ID Token + Access Token**
+    IdP-->>AppB: Tokens (aud=AppB)
+    AppB->>User: Set **App B cookie** (domain=app-b.com)
+    Note right of User: ✅ Seamless SSO for App B<br/>🍪 Reused IdP cookie<br/>🍪 Separate App B cookie
+
+    %% --- Third App Access (User denied) ---
+    User->>AppC: Access protected resource
+    AppC-->>User: 302 Redirect → Azure AD
+    User->>IdP: Request login.microsoftonline.com/authorize
+    IdP-->>User: Reads existing IdP cookie<br/>❌ User not authorized for App C
+    IdP-->>User: Returns **access_denied**
+    Note right of User: 🚫 No tokens issued<br/>User sees "Access Denied"
+```
 
 
 # `Cookie` vs. `Session` vs. `Local Storage`
