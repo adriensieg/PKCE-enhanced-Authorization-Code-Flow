@@ -1,7 +1,6 @@
 # OAuth using OIDC Authentication with PKCE for a Public and Private Client
 
 ## Considerations before starting:
-- Simplified flow
 - [**What you need from Azure Entra ID?**](#what-you-need-from-azure-entra-id)
 - [**What functionality does this app offer?**](#what-functionality-does-this-app-offer)
     - [Authentication & Authorization](#a-authentication--authorization)
