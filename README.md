@@ -18,7 +18,7 @@
 - [**How to configure?**]()
      - **Private/Confidential server-side client**
      - **Public server-side client**
-     - Platforms** & **OAuth flow restrictions
+     - **Platforms** & **OAuth flow** restrictions
        - **SPA**: Must use browser-based CORS requests (JavaScript fetch/XMLHttpRequest)
        - **Mobile/Desktop** (PublicClient): Allows server-side token exchange with PKCE
        - **Web**: Requires client authentication (secret/certificate)
