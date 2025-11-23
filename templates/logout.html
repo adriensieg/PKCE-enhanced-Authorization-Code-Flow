@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Logout - Secure OAuth App{% endblock %}
+
+{% block extra_head %}
+<style>
+    .logout-container {
+        max-width: 500px;
+        margin: 0 auto;
+        text-align: center;
+    }
+    .logout-icon {
+        font-size: 4rem;
+        color: #28a745;
+        animation: checkmark 0.5s ease-in-out;
+    }
+    @keyframes checkmark {
+        0% { transform: scale(0); }
+        50% { transform: scale(1.2); }
+        100% { transform: scale(1); }
+    }
+    .countdown {
+        font-size: 1.2em;
+        font-weight: bold;
+        color: #0d6efd;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="logout-container">
+    <!-- Success Icon -->
+    <div class="mb-4">
+        <i class="bi bi-check-circle logout-icon"></i>
+    </div>
+
+    <!-- Header -->
+    <h2 class="text-success mb-3">Successfully Logged Out</h2>
+    <p class="text-muted mb-4">
+        Your session has been terminated securely. Thank you for using our application.
+    </p>
+
+    <!-- Logout Information Card -->
+    <div class="card shadow mb-4">
+        <div class="card-body p-4">
+            <h5 class="card-title text-success mb-3">
+                <i class="bi bi-shield-check me-2"></i>
+                Logout Complete
+            </h5>
+            
+            <div class="row text-start">
+                <div class="col-12">
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            <small>Your session has been cleared from our servers</small>
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            <small>All authentication tokens have been revoked</small>
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            <small>Session cookies have been cleared</small>
+                        </li>
+                        <li class="mb-0">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            <small>You have been logged out from Microsoft Entra ID</small>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auto-redirect Notice -->
+    <div class="card bg-light mb-4">
+        <div class="card-body py-3">
+            <p class="card-text mb-2">
+                <i class="bi bi-info-circle text-primary me-2"></i>
+                You will be redirected to the home page in <span class="countdown" id="countdown">5</span> seconds.
+            </p>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="d-grid gap-2">
+        <a href="/" class="btn btn-primary">
+            <i class="bi bi-house me-2"></i>
+            Return to Home
+        </a>
+        <a href="/login" class="btn btn-outline-primary">
+            <i class="bi bi-box-arrow-in-right me-2"></i>
+            Login Again
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Auto-redirect countdown
+let countdown = 5;
+const countdownElement = document.getElementById('countdown');
+
+function updateCountdown() {
+    countdown--;
+    countdownElement.textContent = countdown;
+    
+    if (countdown <= 0) {
+        window.location.href = '/';
+    }
+}
+
+// Start countdown
+const countdownInterval = setInterval(updateCountdown, 1000);
+
+// Clear interval if user navigates away
+window.addEventListener('beforeunload', function() {
+    clearInterval(countdownInterval);
+});
+
+// Add click event to stop countdown if user interacts
+document.querySelectorAll('a, button').forEach(element => {
+    element.addEventListener('click', function() {
+        clearInterval(countdownInterval);
+    });
+});
+</script>
+{% endblock %}
