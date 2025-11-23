@@ -192,17 +192,10 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Configuration
-# TENANT_ID='df17274c-ffb6-45f7-84d3-177ae7c6bd1f'
-# CLIENT_ID='d95e0397-1de4-4434-a540-3aa5e3c73c94'
-# CLIENT_SECRET='5Mj8Q~IuFrRrnAuGeAWnEnmsQQSXZwOAmitc1csz'
-# REDIRECT_URI='http://localhost:8080/auth/callback'
-# SECRET_KEY='AN4nR-rN2XqbBi1cswvvg2T4RGYem_nVA-VZgSlxbpQ'
-
 TENANT_ID='c05b8d5a-b883-4afb-ae93-db5db239911c'
-CLIENT_ID='c404b476-e49a-487b-b786-1e5049a9a799'
-CLIENT_SECRET='RN58Q~6bhY8WhkaFrAk5Ft.JsfiYeXOwhA6xVb7R'
-SECRET_KEY='RN58Q~6bhY8WhkaFrAk5Ft.JsfiYeXOwhA6xVb7R'
+CLIENT_ID=''
+CLIENT_SECRET=''
+SECRET_KEY=''
 REDIRECT_URI='http://localhost:8080/auth/callback'
 
 # Microsoft Entra ID endpoints
