@@ -192,7 +192,8 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-TENANT_ID='c05b8d5a-b883-4afb-ae93-db5db239911c'
+# Configuration
+TENANT_ID=''
 CLIENT_ID=''
 CLIENT_SECRET=''
 SECRET_KEY=''
