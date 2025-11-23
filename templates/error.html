@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error {{ error_code }} - Secure OAuth App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .error-container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        .error-code {
+            font-size: 72px;
+            font-weight: bold;
+            color: #dc3545;
+            margin: 0;
+        }
+        .error-message {
+            font-size: 24px;
+            color: #333;
+            margin: 20px 0;
+        }
+        .error-details {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            color: #666;
+            font-family: monospace;
+            font-size: 14px;
+            text-align: left;
+            word-wrap: break-word;
+        }
+        .nav-links {
+            margin-top: 30px;
+        }
+        .nav-links a {
+            display: inline-block;
+            margin: 0 10px;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        .nav-links a:hover {
+            background: #0056b3;
+        }
+        .nav-links a.secondary {
+            background: #6c757d;
+        }
+        .nav-links a.secondary:hover {
+            background: #545b62;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <h1 class="error-code">{{ error_code }}</h1>
+        <h2 class="error-message">{{ error_message }}</h2>
+        
+        {% if error_details %}
+        <div class="error-details">
+            <strong>Details:</strong><br>
+            {{ error_details }}
+        </div>
+        {% endif %}
+        
+        <div class="nav-links">
+            <a href="/">Go Home</a>
+            <a href="/health" class="secondary">Health Check</a>
+            {% if error_code == 404 %}
+            <a href="javascript:history.back()" class="secondary">Go Back</a>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
